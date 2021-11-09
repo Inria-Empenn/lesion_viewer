@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script src="libs/jszip/dist/jszip.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="libs/Papaya/release/current/standard/papaya.css" />
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+    
+    <!-- <script type="text/javascript" src="libs/Papaya/release/current/standard/papaya.js"></script> -->
+
+    JS debug start -->
+    <script type="text/javascript" src="libs/Papaya/src/js/data/sample-image.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas-image.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/lib/base64-binary.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/bowser.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/daikon.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/nifti-reader.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/jquery.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/numerics.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/pako-inflate.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/gl-matrix.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/gifti-reader.js"></script>
+    <script type="text/javascript" src="libs/Papaya/lib/GLU.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/constants.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/utilities/array-utils.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/utilities/math-utils.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/utilities/object-utils.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/utilities/platform-utils.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/utilities/string-utils.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/utilities/url-utils.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/core/coordinate.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/core/point.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/header.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/imagedata.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/imagedescription.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/imagedimensions.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/imagerange.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/imagetype.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/nifti/header-nifti.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/dicom/header-dicom.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/orientation.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/transform.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/volume.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/voxeldimensions.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/volume/voxelvalue.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/surface/surface.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/surface/surface-gifti.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/surface/surface-mango.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/surface/surface-vtk.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/dialog.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menu.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menuitem.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menuitemcheckbox.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menuitemradiobutton.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menuitemfilechooser.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menuitemrange.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menuitemslider.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/menuitemspacer.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/ui/toolbar.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/atlas.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/colortable.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/display.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/preferences.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/screenslice.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/screensurface.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/screenvol.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/viewer/viewer.js"></script>
+
+    <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script>
+    <!-- JS debug end
+
+    <script type="text/javascript" src="main.js"></script>
+
+    <title>Lesion Viewer</title>
+</head>
+
+<body>
+
+    <div id="viewer-container" class="hide">
+        <div class="papaya"></div>
+
+        <div id="toggle-visibility-buttons">
+        </div>
+
+        <div class="navigation">
+            <button id="prev">Prev</button> <button id="next">Next</button>
+        </div>
+        
+        <div class="info">
+            <div id="description">Comment</div>
+
+            <label for="comment">Comment</label>
+            <input type="text" id="comment">
+
+            <div class="validation">
+                <label for="valid">Valid</label>
+                <input type="checkbox" name="valid" id="valid">
+                <button id="save">Save</button>
+            </div>
+
+        </div>
+
+    </div>
+
+    <input type=file id="load">
+
+</body>
+
+</html>
