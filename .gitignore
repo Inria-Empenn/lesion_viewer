@@ -1,6 +1,4 @@
 data/
 .vscode/
-libs/**/*
-!libs/Papaya/release/current/standard/papaya.js
-!libs/Papaya/release/current/standard/papaya.css
-!libs/jszip/dist/jszip.min.js
+libs/Papaya
+libs/jszip
