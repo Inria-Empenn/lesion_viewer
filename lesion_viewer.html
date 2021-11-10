@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -12,10 +13,10 @@
 
     <link rel="stylesheet" type="text/css" href="libs/Papaya/release/current/standard/papaya.css" />
     <link rel="stylesheet" type="text/css" href="styles.css" />
-    
+
     <!-- <script type="text/javascript" src="libs/Papaya/release/current/standard/papaya.js"></script> -->
 
-    <!-- JS debug start --> 
+    <!-- JS debug start -->
     <script type="text/javascript" src="libs/Papaya/src/js/data/sample-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas.js"></script>
@@ -97,12 +98,13 @@
 
         <div id="toggle-visibility-buttons">
         </div>
+        <button id="go-to-lesion">Go to current lesion</button>
 
         <div class="navigation">
             <button id="prev">Prev</button> <button id="next">Next</button>
         </div>
-        
-        <div class="info">
+
+        <div id="info">
             <div id="description">Comment</div>
 
             <label for="comment">Comment</label>
@@ -116,6 +118,21 @@
 
         </div>
 
+
+        <div id="loader" class="hide">
+
+            <svg version="1.1" id="L3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 0 0" xml:space="preserve">
+                <circle fill="none" stroke="#fff" stroke-width="4" cx="50" cy="50" r="44" style="opacity:0.5;" />
+                <circle fill="none" stroke="#fff" stroke-width="3" cx="8" cy="54" r="6">
+                    <animateTransform attributeName="transform" dur="2s" type="rotate" from="0 50 48" to="360 50 52"
+                        repeatCount="indefinite" />
+
+                </circle>
+            </svg>
+
+        </div>
+    
     </div>
 
     <input type=file id="load">
