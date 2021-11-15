@@ -107,9 +107,9 @@ let load_image_viewer = (images, image_parameters, lesion, lesion_index)=> {
     }
     // Reorder
     // papayaContainers[0].viewer.screenVolumes = screen_volumes
-    let i3 = params['encodedImages'][3]
-    params['encodedImages'][3] = params['encodedImages'][2]
-    params['encodedImages'][2] = i3
+    // let i3 = params['encodedImages'][3]
+    // params['encodedImages'][3] = params['encodedImages'][2]
+    // params['encodedImages'][2] = i3
 
     // params['worldSpace'] = false
     loc = lesion['location']
