@@ -12,11 +12,12 @@ var params = [];
 
 params["images"] = [];
 
-let current_image_index = 0;
+let current_lesion_index = 0;
 
 let image_archive = null;
 let lesions = [];
 let toggle_buttons = [];
+let grid = null;
 
 let show_loader = ()=> {
     let loader = document.getElementById('loader')
@@ -51,7 +52,7 @@ let create_toggle_button = (button_name, image_index)=> {
 
 let loaded_images = []
 
-let load_image_viewer = (images, image_parameters, lesion, lesion_index)=> {
+let load_lesion_viewer = (images, image_parameters, lesion, lesion_index)=> {
     
     for(let li of loaded_images) {
         delete window[li.name]
@@ -96,7 +97,7 @@ let load_image_viewer = (images, image_parameters, lesion, lesion_index)=> {
         // parameters['interpolation'] = false
         params[image_name] = parameters
         // params[file_name] = image_parameters[key]
-        create_toggle_button(file_name, image_index)
+        create_toggle_button(file_name.split('/').at(-1), image_index)
         
         // for(let i=0 ; i<papayaContainers[0].viewer.screenVolumes.length ; i++) {
         //     if(papayaContainers[0].viewer.screenVolumes[i].volume.fileName == image_name) {
@@ -111,12 +112,12 @@ let load_image_viewer = (images, image_parameters, lesion, lesion_index)=> {
     // params['encodedImages'][3] = params['encodedImages'][2]
     // params['encodedImages'][2] = i3
 
-    // params['worldSpace'] = false
+    params['worldSpace'] = true
     loc = lesion['location']
     // params['coordinate'] = [loc[2], loc[1], loc[0]]
     params['coordinate'] = [-loc[0], -loc[1], loc[2]]
     params['smoothDisplay'] = false
-    // params['ignoreNiftiTransforms'] = true
+    params['ignoreNiftiTransforms'] = false
     // params['syncOverlaySeries'] = false
 
     let description = document.getElementById('description')
@@ -127,28 +128,43 @@ let load_image_viewer = (images, image_parameters, lesion, lesion_index)=> {
     hide_loader()
 }
 
-let go_to_lesion = (lesion)=> {
-    loc = lesion['location']
+let go_to_world_coordinates = (loc)=> {
     var coord = new papaya.core.Coordinate();
-    papayaContainers[0].viewer.getIndexCoordinateAtWorld(-loc[0], -loc[1], loc[2], coord);
+    papayaContainers[0].viewer.getIndexCoordinateAtWorld(loc[0], loc[1], loc[2], coord);
     papayaContainers[0].viewer.gotoCoordinate(coord)
 }
 
-let load_image = (i)=> {
-    current_image_index = i;
-    if(current_image_index < 0) {
-        current_image_index = lesions.length-1;
+let go_to_voxel_coordinates = (loc)=> {
+    var coord = new papaya.core.Coordinate();
+    coord.x = loc[0];
+    coord.y = loc[1];
+    coord.z = loc[2];
+    papayaContainers[0].viewer.gotoCoordinate(coord)
+}
+
+let go_to_lesion = (lesion)=> {
+    loc = lesion['location']
+    go_to_world_coordinates([-loc[0], -loc[1], loc[2]])
+}
+
+let load_lesion = (i)=> {
+    current_lesion_index = i;
+    if(current_lesion_index < 0) {
+        current_lesion_index = lesions.length-1;
     }
-    if(current_image_index >= lesions.length) {
-        current_image_index = 0;
+    if(current_lesion_index >= lesions.length) {
+        current_lesion_index = 0;
     }
 
-    let lesion = lesions[current_image_index]
+    let lesion = lesions[current_lesion_index]
     let info = validation[lesion['name']];
     let comment = document.getElementById('comment');
     let valid = document.getElementById('valid');
     comment.value = info ? info['comment'] : ''
     valid.checked = info ? info['valid'] : false 
+    if(info == null) {
+        valid.indeterminate = true
+    }
 
     let image_descriptions = lesion['images']
 
@@ -168,7 +184,7 @@ let load_image = (i)=> {
 
     if(!need_to_load) {
         go_to_lesion(lesion)
-        description.innerText = `${lesion['name']} - ${current_image_index + 1}/${lesions.length}`
+        description.innerText = `${lesion['name']} - ${current_lesion_index + 1}/${lesions.length}`
         return
     }
 
@@ -199,15 +215,126 @@ let load_image = (i)=> {
 
     show_loader()
 
-    Promise.all(promises).then((images)=>load_image_viewer(images, image_parameters, lesion, current_image_index))
+    Promise.all(promises).then((images)=>load_lesion_viewer(images, image_parameters, lesion, current_lesion_index))
 }
 
 let save_validation = ()=> {
     localStorage.setItem(JSON.stringify(validation))
 }
 
-document.addEventListener("DOMContentLoaded", function(event) {
+let create_table = ()=> {
+    let table = {'name': [], 'description': [], 'comment': [], 'valid': [] }
+    // let values = []
+    let rowData = []
+    let i = 0
+    for(let lesion of lesions) {
+        table['name'].push(lesion.name)
+        table['description'].push(lesion.description)
+        let info = validation[lesion.name];
+        if(info != null) {
+            table['comment'].push(info['comment'])
+            table['valid'].push(info['valid'])
+        } else {
+            table['comment'].push('')
+            table['valid'].push('')
+        }
+        rowData.push({name: lesion.name, description: lesion.description, n_methods_which_detected_lesion: lesion.n_methods_which_detected_lesion, comment: info ? info.comment : '', valid: info ? info.valid : ''})
+        // values.push([lesion.name, lesion.description, info ? info.comment : '', info ? info.valid : ''])
+    }
+    // let df = new dfd.DataFrame(table)
+    // df.plot("plot_div").table()
     
+    // values = [table.name, table.description, table.comment, table.valid]
+    // var data = [{
+    //     type: 'table',
+    //     header: { values: [["<b>Name</b>"], ["<b>Description</b>"], ["<b>Comment</b>"], ["<b>Valid</b>"]], },
+    //     cells: { values: values }
+    // }]
+    
+    // Plotly.newPlot('plot_div', data);
+
+    // plot_div.on('plotly_click', function(data){
+    //     console.log(data)
+    // });
+
+
+    // specify the columns
+    const columnDefs = [
+        { field: "name", sortable: true, filter: true, width: 150, resizable: true },
+        { field: "description", sortable: true, filter: true, flex: true, resizable: true },
+        { field: "n_methods_which_detected_lesion", sortable: true, filter: true, resizable: true, filter: 'agNumberColumnFilter' },
+        // { field: "comment", sortable: true, filter: true, resizable: true },
+        // { field: "valid", checkboxSelection: true }
+      ];
+  
+      // let the grid know which columns and what data to use
+      const gridOptions = {
+        columnDefs: columnDefs,
+        rowSelection: 'single',
+        rowData: rowData,
+        onRowSelected: (event) => {
+            if(!event.node.isSelected()) {
+                return
+            }
+            let lesion_index = lesions.findIndex((lesion)=> lesion.name == event.data.name)
+            load_lesion(lesion_index)
+        },
+        
+        // columnTypes: { numberColumn: { width: 100, filter: 'agNumberColumnFilter' } }
+      };
+  
+    // lookup the container we want the Grid to use
+    const eGridDiv = document.querySelector('#plot_div');
+  
+    // create the grid passing in the div to use together with the columns & data we want to use
+    grid = new agGrid.Grid(eGridDiv, gridOptions);
+    grid.gridOptions.api.sizeColumnsToFit();
+
+    // grid.gridOptions.api.getDisplayedRowAtIndex(1).data
+    // grid.gridOptions.api.getDisplayedRowCount()
+    // grid.gridOptions.api.selectIndex(2)
+    // grid.gridOptions.api.getSelectedNodes()[0].rowIndex
+}
+
+let resize_viewer = (container)=> {
+
+    let papaya_container = document.getElementById('papaya-container')
+    let viewer_ratio = 1.5
+
+    let padding_height = papayaContainers.length > 0 ? papayaContainers[0].containerHtml.height() - papayaContainers[0].getViewerDimensions()[1] : 0
+    console.log(padding_height)
+    if(container == null) {
+        container = {}
+        container.width = window.innerWidth - 250 - 16
+        container.height = window.innerHeight - padding_height
+    }
+    
+    let container_ratio = container.width / container.height
+
+    if(container_ratio > viewer_ratio) {
+        papaya_container.style.height = '' + container.height + 'px'
+        papaya_container.style.width = '' + (container.height * viewer_ratio) + 'px'
+        papaya_container.style['margin-bottom'] = '' + padding_height + 'px'
+    } else {
+        papaya_container.style.width = '' + container.width + 'px'
+        papaya_container.style.height = '' + (container.width / viewer_ratio) + 'px'
+        papaya_container.style['margin-bottom'] = '' + padding_height + 'px'
+    }
+    setTimeout( ()=> papaya.Container.resizePapaya(), 250 )
+}
+// resize_viewer({innerWidth: 400, innerHeight: 400})
+window.addEventListener("resize", function(event) {
+    resize_viewer()
+})
+
+document.addEventListener("DOMContentLoaded", function(event) {
+    resize_viewer()
+
+    let papaya_container = document.getElementById('papaya-container')
+    papaya_container.addEventListener('wheel', (event)=> {
+        event.preventDefault()
+    })
+
     let load = document.getElementById('load')
     
     load.onchange = function() {
@@ -232,17 +359,19 @@ document.addEventListener("DOMContentLoaded", function(event) {
                 viewer_container.classList.remove('hide')
                 load.classList.add('hide')
                 if(lesions.length > 0){
-                    load_image(0)
+                    create_table()
+                    resize_viewer()
+                    grid.gridOptions.api.selectIndex(0)
                 }
             })
     };
 
     let comment = document.getElementById('comment');
     comment.addEventListener('change', ()=> {
-        let lesion_name = lesions[current_image_index]['name']
+        let lesion_name = lesions[current_lesion_index]['name']
         let info = validation[lesion_name];
         if(info != null) {
-            validation[lesion_name]['comment'] = comment.value
+            info['comment'] = comment.value
         } else {
             validation[lesion_name] = {'comment': comment.value, 'valid': null }
         }
@@ -250,10 +379,10 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
     let valid = document.getElementById('valid');
     valid.addEventListener('change', ()=> {
-        let lesion_name = lesions[current_image_index]['name']
+        let lesion_name = lesions[current_lesion_index]['name']
         let info = validation[lesion_name];
         if(info != null) {
-            validation[lesion_name]['valid'] = valid.checked
+            info['valid'] = valid.checked
         } else {
             validation[lesion_name] = {'valid': valid.checked, 'comment': '' }
         }
@@ -274,16 +403,26 @@ document.addEventListener("DOMContentLoaded", function(event) {
     
     let prev_button = document.getElementById('prev')
     prev_button.addEventListener('click', ()=> {
-        load_image(current_image_index - 1);
+        let selectedNodes = grid.gridOptions.api.getSelectedNodes()
+        let currentRow = selectedNodes.length > 0 && selectedNodes[0].displayed ? selectedNodes[0].rowIndex - 1 : 1
+        if(currentRow < 0) {
+            currentRow = grid.gridOptions.api.getDisplayedRowCount() - 1;
+        }
+        grid.gridOptions.api.selectIndex(currentRow)
     })
 
     let next_button = document.getElementById('next')
     next_button.addEventListener('click', ()=> {
-        load_image(current_image_index + 1);
+        let selectedNodes = grid.gridOptions.api.getSelectedNodes()
+        let currentRow =  selectedNodes.length > 0 && selectedNodes[0].displayed ? grid.gridOptions.api.getSelectedNodes()[0].rowIndex + 1 : -1
+        if(currentRow >= grid.gridOptions.api.getDisplayedRowCount()) {
+            currentRow = 0;
+        }
+        grid.gridOptions.api.selectIndex(currentRow)
     })
 
     let go_to_lesion_button = document.getElementById('go-to-lesion')
     go_to_lesion_button.addEventListener('click', ()=> {
-        go_to_lesion(lesions[current_image_index])
+        go_to_lesion(lesions[current_lesion_index])
     })
 });

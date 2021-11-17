@@ -3,6 +3,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 
 <head>
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+    <link rel="manifest" href="favicon/site.webmanifest">
+
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -17,10 +22,18 @@
     <link rel="stylesheet" type="text/css" href="styles.css" />
 
     <!-- <script type="text/javascript" src="libs/Papaya/release/current/standard/papaya.js"></script> -->
-    <script type="text/javascript" src="libs/papaya.js"></script>
+    <!-- <script type="text/javascript" src="libs/papaya.js"></script> -->
+    
+	<!-- <script src='https://cdn.plot.ly/plotly-2.4.2.min.js'></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/danfojs@0.3.3/lib/bundle.min.js"></script> -->
+
+    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-theme-alpine.css">
+
 
     <!-- JS debug start -->
-    <!-- <script type="text/javascript" src="libs/Papaya/src/js/data/sample-image.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/data/sample-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas.js"></script>
 
@@ -86,7 +99,7 @@
     <script type="text/javascript" src="libs/Papaya/src/js/viewer/screenvol.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/viewer/viewer.js"></script>
 
-    <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script> -->
+    <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script>
     <!-- JS debug end-->
 
     <script type="text/javascript" src="main.js"></script>
@@ -97,48 +110,63 @@
 <body>
 
     <div id="viewer-container" class="hide">
-        <div class="papaya"></div>
-
-        <div id="toggle-visibility-buttons">
-        </div>
-        <button id="go-to-lesion">Go to current lesion</button>
-
-        <div class="navigation">
-            <button id="prev">Prev</button> <button id="next">Next</button>
-        </div>
-
-        <div id="info">
-            <div id="description">Comment</div>
-
-            <label for="comment">Comment</label>
-            <input type="text" id="comment">
-
-            <div class="validation">
-                <label for="valid">Valid</label>
-                <input type="checkbox" name="valid" id="valid">
-                <button id="save">Save</button>
+        
+        <div id="papaya-toolbox-container">
+            
+            <div id="papaya-container">
+                <div class="papaya"></div>
             </div>
-
-        </div>
-
-
-        <div id="loader" class="hide">
-
-            <svg version="1.1" id="L3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 0 0" xml:space="preserve">
-                <circle fill="none" stroke="#fff" stroke-width="4" cx="50" cy="50" r="44" style="opacity:0.5;" />
-                <circle fill="none" stroke="#fff" stroke-width="3" cx="8" cy="54" r="6">
-                    <animateTransform attributeName="transform" dur="2s" type="rotate" from="0 50 48" to="360 50 52"
-                        repeatCount="indefinite" />
-
-                </circle>
-            </svg>
-
-        </div>
     
+            <div id="toolbox">
+    
+                <div id="toggle-visibility-buttons">
+                </div>
+                <button id="go-to-lesion">Go to current lesion</button>
+        
+                <div class="navigation">
+                    <button id="prev">&#60; Prev</button> <button id="next">Next &#62;</button>
+                </div>
+                
+                <div id="info">
+                    <div id="description"></div>
+                    
+                    <div class="comment-container">
+                        <label for="comment">Comment</label>
+                        <textarea type="text" id="comment"></textarea>
+                    </div>
+                    
+                    <div class="validation">
+                        <label for="valid">Valid</label>
+                        <input type="checkbox" name="valid" id="valid">
+                    </div>
+
+                    <button id="save">Save</button>
+                    
+                </div>
+            </div>
+            
+            
+        </div>
+        
+        <div id="plot_div" class="ag-theme-alpine" style="height: 600px; width:100%;"></div>
+
     </div>
 
     <input type=file id="load">
+
+    <div id="loader" class="hide">
+
+        <svg version="1.1" id="L3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 0 0" xml:space="preserve">
+            <circle fill="none" stroke="#fff" stroke-width="4" cx="50" cy="50" r="44" style="opacity:0.5;" />
+            <circle fill="none" stroke="#fff" stroke-width="3" cx="8" cy="54" r="6">
+                <animateTransform attributeName="transform" dur="2s" type="rotate" from="0 50 48" to="360 50 52"
+                    repeatCount="indefinite" />
+
+            </circle>
+        </svg>
+
+    </div>
 
 </body>
 
