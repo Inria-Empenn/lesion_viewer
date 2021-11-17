@@ -174,7 +174,7 @@ let load_lesion = (i)=> {
     let need_to_load = false
 
     for(let image_description of image_descriptions) {
-        if(loaded_images.length == 0 || loaded_images.findIndex((i)=>i.file_name == image_description.file)<0) {
+        if(loaded_images.length == 0 || loaded_images.findIndex((i)=>i.file_name.split('/').at(-1) == image_description.file)<0) {
             need_to_load = true;
             break
         }
@@ -203,7 +203,6 @@ let load_lesion = (i)=> {
         
         promises.push(image_archive.file(file_name).async("base64"))
         image_parameters.push({'file_name': file_name, 'parameters': image_description['parameters'] })
-        // image_parameters.push({'file_name': file_name, 'parameters': image_description['parameters'], 'promise_index': promise_index })
     }
 
 
