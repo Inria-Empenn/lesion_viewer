@@ -1,7 +1,8 @@
-.info {
-    /* display: flex; */
-    /* flex-direction: column; */
+#info, #fields {
+    display: flex;
+    flex-direction: column;
 }
+
 .hide {
     display: none !important;
 }
