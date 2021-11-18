@@ -162,9 +162,7 @@ let load_lesion = (i)=> {
     let valid = document.getElementById('valid');
     comment.value = info ? info['comment'] : ''
     valid.checked = info ? info['valid'] : false 
-    if(info == null) {
-        valid.indeterminate = true
-    }
+    valid.indeterminate = info == null
 
     let image_descriptions = lesion['images']
 
