@@ -18,6 +18,8 @@ let image_archive = null;
 let lesions = [];
 let toggle_buttons = [];
 let grid = null;
+let initialized = false;
+let segmentation_data = null;
 
 let show_loader = () => {
     let loader = document.getElementById('loader')
@@ -119,6 +121,16 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     params['smoothDisplay'] = false
     // params['ignoreNiftiTransforms'] = true
     // params['syncOverlaySeries'] = false
+    params['loadingComplete'] = () => {
+        let sv = papayaContainers[0].viewer.screenVolumes
+        let volume = sv[sv.length - 1].volume
+        let data = volume.imageData.data
+        for (let i = 0; i < data.length; i++) {
+            data[i] = i % 2
+        }
+        segmentation_data = data
+        papayaContainers[0].viewer.drawViewer(true, false);
+    }
 
     let description = document.getElementById('description')
     description.innerText = `${lesion['name']} - ${lesion_index + 1}/${lesions.length}`
@@ -126,6 +138,63 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     papaya.Container.resetViewer(0, params);
 
     hide_loader()
+
+    // if (!initialized) {
+    //     initialized = true;
+        let canvas = papayaContainers[0].viewer.canvas
+        canvas.addEventListener("mousemove", listenerMouseMove, false);
+        canvas.addEventListener("mousedown", listenerMouseDown, false);
+        canvas.addEventListener("mouseup", listenerMouseUp, false);
+    // }
+}
+
+let dragging = false
+
+let listenerMouseMove = (event) => {
+    if (dragging) {
+
+        let viewer = papayaContainers[0].viewer
+        let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
+        let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
+
+        // let x = viewer.convertScreenToImageCoordinateX(currentMouseX - viewer.canvasRect.left, viewer.selectedSlice);
+        // let y = viewer.convertScreenToImageCoordinateY(currentMouseY - viewer.canvasRect.top, viewer.selectedSlice);
+        // let coord = viewer.convertCurrentCoordinateToScreen(viewer.selectedSlice);
+        let x = viewer.currentCoord.x
+        let y = viewer.currentCoord.y
+        let z = viewer.selectedSlice.currentSlice;
+        console.log(x, y, z)
+        let sv = papayaContainers[0].viewer.screenVolumes
+        let volume = sv[sv.length - 1].volume
+
+        let viewer_volume = papayaContainers[0].viewer.volume
+        // let xDim = viewer_volume.getXDim()
+        // let yDim = viewer_volume.getYDim()
+        // let zDim = viewer_volume.getZDim()
+        // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(coord.x, coord.y, coord.z)
+        let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
+        console.log(offset)
+        // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffsetNative(x, y, z)
+        segmentation_data[offset] = !segmentation_data[offset]
+        // console.log(!segmentation_data[offset])
+        // let index = ((y * xDim) + x) * 4;
+        // for (let i = 0; i < segmentation_data.length; i++) {
+        //     segmentation_data[i] = i % 5
+        // }
+        // segmentation_data[x+y*xDim+z*xDim*yDim] = 1
+        // segmentation_data[z+y*zDim+x*zDim*yDim] = 1
+        // segmentation_data[y+x*yDim+z*xDim*yDim] = 1
+
+        papayaContainers[0].viewer.drawViewer(true, false);
+    }
+}
+
+let listenerMouseDown = (event) => {
+    dragging = true
+}
+
+let listenerMouseUp = (event) => {
+    dragging = false
 }
 
 let go_to_world_coordinates = (loc) => {
@@ -164,12 +233,12 @@ let load_lesion = (i) => {
     valid.checked = info ? info['valid'] : false
     valid.indeterminate = info == null
 
-    if(lesions.fields != null) {
+    if (lesions.fields != null) {
         let fields_element = document.getElementById('fields')
-        while(fields_element.hasChildNodes()) {
+        while (fields_element.hasChildNodes()) {
             fields_element.firstChild.remove()
         }
-        for(let field of lesions.fields) {
+        for (let field of lesions.fields) {
             let field_container = document.createElement('div')
             let fiel_label = document.createElement('label')
             fiel_label.innerText = field.name
@@ -203,6 +272,8 @@ let load_lesion = (i) => {
         return
     }
 
+    // image_descriptions.push(image_descriptions[image_descriptions.length-1])
+
     for (let image_description of image_descriptions) {
         let file_name = image_description['file']
         for (let f in image_archive.files) {
@@ -219,7 +290,6 @@ let load_lesion = (i) => {
         promises.push(image_archive.file(file_name).async("base64"))
         image_parameters.push({ 'file_name': file_name, 'parameters': image_description['parameters'] })
     }
-
 
     description.innerText = 'loading ' + lesion['name'] + '...'
 
@@ -279,8 +349,8 @@ let create_table = () => {
         // { field: "n_methods_which_detected_lesion", sortable: true, resizable: true, filter: 'agNumberColumnFilter' },
     ];
 
-    if(lesions.fields != null) {
-        for(let field of lesions.fields) {
+    if (lesions.fields != null) {
+        for (let field of lesions.fields) {
             columnDefs.push({ field: field.name, sortable: field.sortable, resizable: field.resizable, filter: field.filter })
         }
     }
@@ -474,10 +544,16 @@ const downloadBlob = (data, fileName, mimeType) => {
 // data = papayaContainers[0].viewer.screenVolumes[4].volume.imageData.data
 // downloadBlob(data, 'test.bin', 'application/octet-stream');
 
-let write_test_volume = (data)=> {
-    for(let i=0 ; i<data.length ; i++) {
-        data[i] = i%255
+let write_test_volume = (data) => {
+    for (let i = 0; i < data.length; i++) {
+        data[i] = i % 255
     }
 }
 
 // write_test_volume(data)
+// let canvas = papayaContainers[0].viewer.canvas
+// canvas.addEventListener("mousemove", this.listenerMouseMove, false);
+// canvas.addEventListener("mousedown", this.listenerMouseDown, false);
+// // canvas.addEventListener("mouseout", this.listenerMouseOut, false);
+// // canvas.addEventListener("mouseleave", this.listenerMouseLeave, false);
+// canvas.addEventListener("mouseup", this.listenerMouseUp, false);
