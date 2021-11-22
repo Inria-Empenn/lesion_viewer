@@ -7,7 +7,7 @@
     display: none !important;
 }
 
-button, textarea, label, input {
+button, textarea, label, input, #description {
     margin: 5px;
 }
 
@@ -43,6 +43,10 @@ button, textarea, label, input {
 
 #toolbox {
     width: 250px;
+}
+
+#toolbox label {
+    font-weight: 600;
 }
 
 #toolbox .navigation {

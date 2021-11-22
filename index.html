@@ -22,7 +22,7 @@
     <link rel="stylesheet" type="text/css" href="styles.css" />
 
     <!-- <script type="text/javascript" src="libs/Papaya/release/current/standard/papaya.js"></script> -->
-    <!-- <script type="text/javascript" src="libs/papaya.js"></script> -->
+    <script type="text/javascript" src="libs/papaya.js"></script>
     
 	<!-- <script src='https://cdn.plot.ly/plotly-2.4.2.min.js'></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/danfojs@0.3.3/lib/bundle.min.js"></script> -->
@@ -33,7 +33,7 @@
 
 
     <!-- JS debug start -->
-    
+<!--     
     <script type="text/javascript" src="libs/Papaya/src/js/data/sample-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas.js"></script>
@@ -101,6 +101,7 @@
     <script type="text/javascript" src="libs/Papaya/src/js/viewer/viewer.js"></script>
 
     <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script>
+     -->
     <!-- JS debug end-->
 
     <script type="text/javascript" src="main.js"></script>
@@ -145,7 +146,7 @@
                 <div class="navigation">
                     <button id="prev">&#60; Prev</button> <button id="next">Next &#62;</button>
                 </div>
-
+                
                 <button id="save">Save</button>
 
             </div>
@@ -157,7 +158,11 @@
 
     </div>
 
-    <input type=file id="load">
+    <div id='load buttons'>
+        <div><label for="load_images_archive">Open images archive:</label> <input type=file id="load_images_archive" accept="application/zip" onclick="this.value=null;"></div>
+        <!-- <div><label for="load_lesions_data">Open lesions data:</label> <input type=file id="load_lesions_data" accept="text/csv"></div> -->
+        <div><label for="load_task_description">Open task description:</label> <input type=file id="load_task_description" onclick="this.value=null;"></div>
+    </div>
 
     <div id="loader" class="hide">
 

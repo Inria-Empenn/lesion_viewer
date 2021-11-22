@@ -1,6 +1,7 @@
 // Remove smooth display:
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'smoothDisplay', 'No', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'showOrientation', 'Yes', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
+papaya.viewer.Viewer.MAX_OVERLAYS = 12;
 
 // To draw / change the data of a volume:
 // papayaContainers[0].viewer.screenVolumes[3].volume.imageData.data[i] = 1
@@ -15,6 +16,7 @@ params["images"] = [];
 let current_lesion_index = 0;
 
 let image_archive = null;
+let task = {};
 let lesions = [];
 let toggle_buttons = [];
 let grid = null;
@@ -31,12 +33,12 @@ let hide_loader = () => {
     loader.classList.add('hide')
 }
 
-let create_toggle_button = (button_name, image_index) => {
+let create_toggle_button = (button_name, image_index, visible) => {
     let container = document.getElementById('toggle-visibility-buttons')
     let toggle_button = document.createElement("button");
-    toggle_button.innerHTML = "Hide " + button_name;
+    toggle_button.innerHTML = visible ? "Hide " + button_name : "Show " + button_name;
     container.appendChild(toggle_button);
-    toggle_button.setAttribute('data-visible', 'true')
+    toggle_button.setAttribute('data-visible', visible ? 'true' : 'false')
     toggle_button.addEventListener('click', () => {
         let visible = toggle_button.getAttribute('data-visible')
         if (visible == 'true') {
@@ -93,14 +95,11 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         params['encodedImages'].push(image_name)
         window[image_name] = images[image_index]
         loaded_images.push({ name: image_name, file_name: file_name, index: image_index })
-        if (parameters['max'] == 1) {
-            parameters['max'] = 2
-        }
         // parameters['interpolation'] = false
         params[image_name] = parameters
         // params[file_name] = image_parameters[key]
-        create_toggle_button(file_name.split('/').at(-1), image_index)
-
+        create_toggle_button(file_name.split('/').at(-1), image_index, image_parameter.display)
+        image_parameter.image_index = image_index
         // for(let i=0 ; i<papayaContainers[0].viewer.screenVolumes.length ; i++) {
         //     if(papayaContainers[0].viewer.screenVolumes[i].volume.fileName == image_name) {
         //         screen_volumes.push(papayaContainers[0].viewer.screenVolumes[i])
@@ -114,22 +113,28 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     // params['encodedImages'][3] = params['encodedImages'][2]
     // params['encodedImages'][2] = i3
 
-    // params['worldSpace'] = false
-    loc = lesion['location']
+    params['worldSpace'] = false
+    // loc = lesion['location']
     // params['coordinate'] = [loc[2], loc[1], loc[0]]
-    params['coordinate'] = [-loc[0], -loc[1], loc[2]]
+    params['coordinate'] = lesion['location_voxel'] // [-loc[0], -loc[1], loc[2]]
     params['smoothDisplay'] = false
-    // params['ignoreNiftiTransforms'] = true
+    params['ignoreNiftiTransforms'] = true
     // params['syncOverlaySeries'] = false
     params['loadingComplete'] = () => {
-        let sv = papayaContainers[0].viewer.screenVolumes
-        let volume = sv[sv.length - 1].volume
-        let data = volume.imageData.data
-        for (let i = 0; i < data.length; i++) {
-            data[i] = i % 2
+        go_to_lesion(lesions[current_lesion_index])
+        for (let image_parameter of image_parameters) {
+            if(image_parameter.display != null && !image_parameter.display) {
+                papaya.Container.hideImage(0, image_parameter.image_index)
+            }
         }
-        segmentation_data = data
-        papayaContainers[0].viewer.drawViewer(true, false);
+        // let sv = papayaContainers[0].viewer.screenVolumes
+        // let volume = sv[sv.length - 1].volume
+        // let data = volume.imageData.data
+        // for (let i = 0; i < data.length; i++) {
+        //     // data[i] = 0
+        // }
+        // segmentation_data = data
+        // papayaContainers[0].viewer.drawViewer(true, false);
     }
 
     let description = document.getElementById('description')
@@ -141,10 +146,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
     // if (!initialized) {
     //     initialized = true;
-        let canvas = papayaContainers[0].viewer.canvas
-        canvas.addEventListener("mousemove", listenerMouseMove, false);
-        canvas.addEventListener("mousedown", listenerMouseDown, false);
-        canvas.addEventListener("mouseup", listenerMouseUp, false);
+        // let canvas = papayaContainers[0].viewer.canvas
+        // canvas.addEventListener("mousemove", listenerMouseMove, false);
+        // canvas.addEventListener("mousedown", listenerMouseDown, false);
+        // canvas.addEventListener("mouseup", listenerMouseUp, false);
     // }
 }
 
@@ -199,7 +204,7 @@ let listenerMouseUp = (event) => {
 
 let go_to_world_coordinates = (loc) => {
     var coord = new papaya.core.Coordinate();
-    papayaContainers[0].viewer.getIndexCoordinateAtWorld(loc[0], loc[1], loc[2], coord);
+    papayaContainers[0].viewer.getIndexCoordinateAtWorld(-loc[0], -loc[1], loc[2], coord);
     papayaContainers[0].viewer.gotoCoordinate(coord)
 }
 
@@ -211,9 +216,19 @@ let go_to_voxel_coordinates = (loc) => {
     papayaContainers[0].viewer.gotoCoordinate(coord)
 }
 
+let lesion_location_to_voxel_coordinates = (loc) => {
+    let xDim = papayaContainers[0].viewer.volume.getXDim() - 1
+    let yDim = papayaContainers[0].viewer.volume.getYDim() - 1
+    let zDim = papayaContainers[0].viewer.volume.getZDim() - 1
+    return [xDim-loc[0], yDim-loc[1], zDim-loc[2]]
+}
+
 let go_to_lesion = (lesion) => {
-    loc = lesion['location']
-    go_to_world_coordinates([-loc[0], -loc[1], loc[2]])
+    let loc = lesion_location_to_voxel_coordinates(lesion['location_voxel'])
+    console.log(loc)
+    go_to_voxel_coordinates(loc)
+    // loc = lesion['location']
+    // go_to_world_coordinates([loc[0], loc[1], loc[2]])
 }
 
 let load_lesion = (i) => {
@@ -233,17 +248,29 @@ let load_lesion = (i) => {
     valid.checked = info ? info['valid'] : false
     valid.indeterminate = info == null
 
-    if (lesions.fields != null) {
+    if (task.fields != null) {
         let fields_element = document.getElementById('fields')
         while (fields_element.hasChildNodes()) {
             fields_element.firstChild.remove()
         }
-        for (let field of lesions.fields) {
+        for (let field of task.fields) {
             let field_container = document.createElement('div')
             let fiel_label = document.createElement('label')
-            fiel_label.innerText = field.name
-            let field_span = document.createElement('span')
-            field_span.innerText = lesion[field.name]
+            fiel_label.innerText = field.name + ':'
+            let field_span = null
+            if(field.list) {
+                field_span = document.createElement('ul')
+                field_span.style = 'max-height: 200px; overflow: auto;'
+                let list = JSON.parse(lesion[field.name].replaceAll("'", '"'))
+                for(let item of list) {
+                    let li = document.createElement('li')
+                    li.innerText = item
+                    field_span.appendChild(li)
+                }
+            } else {
+                field_span = document.createElement('span')
+                field_span.innerText = lesion[field.name]
+            }
             field_container.appendChild(fiel_label)
             field_container.appendChild(field_span)
             fields_element.appendChild(field_container)
@@ -272,10 +299,12 @@ let load_lesion = (i) => {
         return
     }
 
-    // image_descriptions.push(image_descriptions[image_descriptions.length-1])
+    // if(image_descriptions.length < 8) {
+    //     image_descriptions.push(image_descriptions[image_descriptions.length-1])
+    // }
 
     for (let image_description of image_descriptions) {
-        let file_name = image_description['file']
+        let file_name = image_description.file
         for (let f in image_archive.files) {
             if (f.split('/').at(-1) == file_name) {
                 file_name = f
@@ -288,7 +317,7 @@ let load_lesion = (i) => {
         // }
 
         promises.push(image_archive.file(file_name).async("base64"))
-        image_parameters.push({ 'file_name': file_name, 'parameters': image_description['parameters'] })
+        image_parameters.push({ file_name: file_name, parameters: image_description.parameters, display: image_description.display })
     }
 
     description.innerText = 'loading ' + lesion['name'] + '...'
@@ -322,8 +351,15 @@ let create_table = () => {
             table['comment'].push('')
             table['valid'].push('')
         }
-        rowData.push({ name: lesion.name, description: lesion.description, n_methods_which_detected_lesion: lesion.n_methods_which_detected_lesion, comment: info ? info.comment : '', valid: info ? info.valid : '' })
-        // values.push([lesion.name, lesion.description, info ? info.comment : '', info ? info.valid : ''])
+        data = { name: lesion.name, description: lesion.description }
+
+        if (task.fields != null) {
+            for (let field of task.fields) {
+                data[field.name] = lesion[field.name]
+            }
+        }
+        rowData.push(data)
+
     }
     // let df = new dfd.DataFrame(table)
     // df.plot("plot_div").table()
@@ -349,8 +385,8 @@ let create_table = () => {
         // { field: "n_methods_which_detected_lesion", sortable: true, resizable: true, filter: 'agNumberColumnFilter' },
     ];
 
-    if (lesions.fields != null) {
-        for (let field of lesions.fields) {
+    if (task.fields != null) {
+        for (let field of task.fields) {
             columnDefs.push({ field: field.name, sortable: field.sortable, resizable: field.resizable, filter: field.filter })
         }
     }
@@ -371,17 +407,16 @@ let create_table = () => {
         // columnTypes: { numberColumn: { width: 100, filter: 'agNumberColumnFilter' } }
     };
 
-    // lookup the container we want the Grid to use
+
+    if(grid != null) {
+        grid.destroy()
+    }
     const eGridDiv = document.querySelector('#plot_div');
 
     // create the grid passing in the div to use together with the columns & data we want to use
     grid = new agGrid.Grid(eGridDiv, gridOptions);
     grid.gridOptions.api.sizeColumnsToFit();
 
-    // grid.gridOptions.api.getDisplayedRowAtIndex(1).data
-    // grid.gridOptions.api.getDisplayedRowCount()
-    // grid.gridOptions.api.selectIndex(2)
-    // grid.gridOptions.api.getSelectedNodes()[0].rowIndex
 }
 
 let resize_viewer = (container) => {
@@ -415,6 +450,44 @@ window.addEventListener("resize", function (event) {
     resize_viewer()
 })
 
+let load_lesions = (l)=> {
+    lesions = l
+    // let i = 0
+    // for(let lesion of lesions) {
+    //     for(let type of ['name', 'descritpion', 'images', 'location', 'location_voxel']) {
+    //         if(lesion[type] == null && task.field_types[type] == null) {
+    //             lesion[type] = i
+    //         }
+    //         lesion[type] = lesion[type] | lesion[task.field_names[type]]
+    //     }
+    //     i++
+    // }
+    if (lesions.length > 0) {
+        let viewer_container = document.getElementById('viewer-container')
+        viewer_container.classList.remove('hide')
+        create_table()
+        resize_viewer()
+        grid.gridOptions.api.selectIndex(0)
+    } else {
+        console.log('no lesions found')
+    }
+}
+
+let load_task = (file)=> {
+    task = JSON.parse(file)
+    // if(task.fields != null) {
+    //     task.field_names = {}
+    //     for(let field of task.fields) {
+    //         task.field_names[field.type] = field.name
+    //     }
+    // }
+    if(task instanceof Array) {
+        load_lesions(task)
+    } else if(task.lesions instanceof Array) {
+        load_lesions(task.lesions)
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function (event) {
     resize_viewer()
 
@@ -423,33 +496,49 @@ document.addEventListener("DOMContentLoaded", function (event) {
         event.preventDefault()
     })
 
-    let load = document.getElementById('load')
+    // let load_lesions_data = document.getElementById('load_lesions_data')
+    // load_lesions_data.onchange = function () {
+    //     let file = this.files[0]
+    //     const objectURL = URL.createObjectURL(file)
+    //     dfd.read_csv(objectURL).then((df)=> {
+    //         load_lesions(df.to_json({ download: false }))
+    //     }).catch(err => {
+    //         console.log(err)
+    //     })
+    // }
 
-    load.onchange = function () {
+    let load_task_description = document.getElementById('load_task_description')
+    load_task_description.onchange = function () {
+        if(this.files.length == 0) {
+            return
+        }
+        let file = this.files[0]
+        let file_reader = new FileReader();
+        file_reader.onload = (event)=> load_task(event.target.result)
+        file_reader.readAsText(file, 'UTF-8')
+    }
+
+    let load_image_archives = document.getElementById('load_images_archive')
+
+    load_image_archives.onchange = function () {
+        if(this.files.length == 0) {
+            return
+        }
         var zip = new JSZip();
         zip.loadAsync(this.files[0] /* = file blob */)
             .then(function (local_zip) {
                 image_archive = local_zip;
                 for (let file in image_archive.files) {
-                    if (file.endsWith('lesions.json')) {
+                    if (file.endsWith('.json')) {
                         return image_archive.file(file).async('text')
                     }
                 }
 
             }).then(function (result) {
                 if (result) {
-                    lesions = JSON.parse(result);
+                    load_task(result)
                 } else {
                     console.log('lesions.json not found')
-                }
-
-                let viewer_container = document.getElementById('viewer-container')
-                viewer_container.classList.remove('hide')
-                load.classList.add('hide')
-                if (lesions.length > 0) {
-                    create_table()
-                    resize_viewer()
-                    grid.gridOptions.api.selectIndex(0)
                 }
             })
     };
