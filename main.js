@@ -123,7 +123,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     params['loadingComplete'] = () => {
         go_to_lesion(lesions[current_lesion_index])
         for (let image_parameter of image_parameters) {
-            if(image_parameter.display != null && !image_parameter.display) {
+            if (image_parameter.display != null && !image_parameter.display) {
                 papaya.Container.hideImage(0, image_parameter.image_index)
             }
         }
@@ -146,10 +146,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
     // if (!initialized) {
     //     initialized = true;
-        // let canvas = papayaContainers[0].viewer.canvas
-        // canvas.addEventListener("mousemove", listenerMouseMove, false);
-        // canvas.addEventListener("mousedown", listenerMouseDown, false);
-        // canvas.addEventListener("mouseup", listenerMouseUp, false);
+    // let canvas = papayaContainers[0].viewer.canvas
+    // canvas.addEventListener("mousemove", listenerMouseMove, false);
+    // canvas.addEventListener("mousedown", listenerMouseDown, false);
+    // canvas.addEventListener("mouseup", listenerMouseUp, false);
     // }
 }
 
@@ -220,7 +220,7 @@ let lesion_location_to_voxel_coordinates = (loc) => {
     let xDim = papayaContainers[0].viewer.volume.getXDim() - 1
     let yDim = papayaContainers[0].viewer.volume.getYDim() - 1
     let zDim = papayaContainers[0].viewer.volume.getZDim() - 1
-    return [xDim-loc[0], yDim-loc[1], zDim-loc[2]]
+    return [xDim - loc[0], yDim - loc[1], zDim - loc[2]]
 }
 
 let go_to_lesion = (lesion) => {
@@ -254,22 +254,23 @@ let load_lesion = (i) => {
             fields_element.firstChild.remove()
         }
         for (let field of task.fields) {
+            let field_name = field.field || field.name
             let field_container = document.createElement('div')
             let fiel_label = document.createElement('label')
-            fiel_label.innerText = field.name + ':'
+            fiel_label.innerText = field_name + ':'
             let field_span = null
-            if(field.list) {
+            if (field.list) {
                 field_span = document.createElement('ul')
                 field_span.style = 'max-height: 200px; overflow: auto;'
-                let list = JSON.parse(lesion[field.name].replaceAll("'", '"'))
-                for(let item of list) {
+                let list = JSON.parse(lesion[field_name].replaceAll("'", '"'))
+                for (let item of list) {
                     let li = document.createElement('li')
                     li.innerText = item
                     field_span.appendChild(li)
                 }
             } else {
                 field_span = document.createElement('span')
-                field_span.innerText = lesion[field.name]
+                field_span.innerText = lesion[field_name]
             }
             field_container.appendChild(fiel_label)
             field_container.appendChild(field_span)
@@ -355,7 +356,8 @@ let create_table = () => {
 
         if (task.fields != null) {
             for (let field of task.fields) {
-                data[field.name] = lesion[field.name]
+                let field_name = field.field || field.name
+                data[field_name] = lesion[field_name]
             }
         }
         rowData.push(data)
@@ -387,7 +389,14 @@ let create_table = () => {
 
     if (task.fields != null) {
         for (let field of task.fields) {
-            columnDefs.push({ field: field.name, sortable: field.sortable, resizable: field.resizable, filter: field.filter })
+            if (field.field == null && field.name != null) { // retro compatibility
+                field.field = field.name
+            }
+            
+            if(field.editable && data.length > 0 && typeof (data[0][field.field]) == "boolean" || field.name == 'best_methods') {
+                field.cellRenderer = 'checkboxRenderer'
+            }
+            columnDefs.push(field)
         }
     }
 
@@ -403,12 +412,12 @@ let create_table = () => {
             let lesion_index = lesions.findIndex((lesion) => lesion.name == event.data.name)
             load_lesion(lesion_index)
         },
-
+        components: { checkboxRenderer: CheckboxRenderer }
         // columnTypes: { numberColumn: { width: 100, filter: 'agNumberColumnFilter' } }
     };
 
 
-    if(grid != null) {
+    if (grid != null) {
         grid.destroy()
     }
     const eGridDiv = document.querySelector('#plot_div');
@@ -450,7 +459,7 @@ window.addEventListener("resize", function (event) {
     resize_viewer()
 })
 
-let load_lesions = (l)=> {
+let load_lesions = (l) => {
     lesions = l
     // let i = 0
     // for(let lesion of lesions) {
@@ -473,7 +482,7 @@ let load_lesions = (l)=> {
     }
 }
 
-let load_task = (file)=> {
+let load_task = (file) => {
     task = JSON.parse(file)
     // if(task.fields != null) {
     //     task.field_names = {}
@@ -481,11 +490,41 @@ let load_task = (file)=> {
     //         task.field_names[field.type] = field.name
     //     }
     // }
-    if(task instanceof Array) {
+    if (task instanceof Array) {
         load_lesions(task)
-    } else if(task.lesions instanceof Array) {
+    } else if (task.lesions instanceof Array) {
         load_lesions(task.lesions)
     }
+}
+
+function CheckboxRenderer() { }
+
+CheckboxRenderer.prototype.init = function (params) {
+    this.params = params;
+
+    this.eGui = document.createElement('input');
+    this.eGui.type = 'checkbox';
+    this.eGui.checked = params.value;
+
+    this.checkedHandler = this.checkedHandler.bind(this);
+    this.eGui.addEventListener('click', this.checkedHandler);
+}
+
+CheckboxRenderer.prototype.checkedHandler = function (e) {
+    let checked = e.target.checked;
+    let colId = this.params.column.colId;
+    this.params.node.setDataValue(colId, checked);
+    let lesion_index = lesions.findIndex((lesion) => lesion.name == this.params.data.name)
+    let lesion = lesions[lesion_index]
+    lesion[colId] = checked
+}
+
+CheckboxRenderer.prototype.getGui = function (params) {
+    return this.eGui;
+}
+
+CheckboxRenderer.prototype.destroy = function (params) {
+    this.eGui.removeEventListener('click', this.checkedHandler);
 }
 
 document.addEventListener("DOMContentLoaded", function (event) {
@@ -509,19 +548,19 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     let load_task_description = document.getElementById('load_task_description')
     load_task_description.onchange = function () {
-        if(this.files.length == 0) {
+        if (this.files.length == 0) {
             return
         }
         let file = this.files[0]
         let file_reader = new FileReader();
-        file_reader.onload = (event)=> load_task(event.target.result)
+        file_reader.onload = (event) => load_task(event.target.result)
         file_reader.readAsText(file, 'UTF-8')
     }
 
     let load_image_archives = document.getElementById('load_images_archive')
 
     load_image_archives.onchange = function () {
-        if(this.files.length == 0) {
+        if (this.files.length == 0) {
             return
         }
         var zip = new JSZip();
