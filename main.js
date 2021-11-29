@@ -6,8 +6,6 @@ papaya.viewer.Viewer.MAX_OVERLAYS = 12;
 // To draw / change the data of a volume:
 // papayaContainers[0].viewer.screenVolumes[3].volume.imageData.data[i] = 1
 
-let validation = localStorage.getItem('validation');
-validation = validation != null ? JSON.parse(validation) : {};
 papaya.Container.atlasWorldSpace = false
 var params = [];
 
@@ -241,12 +239,11 @@ let load_lesion = (i) => {
     }
 
     let lesion = lesions[current_lesion_index]
-    let info = validation[lesion['name']];
-    let comment = document.getElementById('comment');
-    let valid = document.getElementById('valid');
-    comment.value = info ? info['comment'] : ''
-    valid.checked = info ? info['valid'] : false
-    valid.indeterminate = info == null
+    let comment = document.getElementById('comment_value');
+    let valid = document.getElementById('valid_value');
+    comment.value = lesion.comment != null ? lesion.comment : ''
+    valid.checked = lesion.valid != null ? lesion.valid : false
+    valid.indeterminate = lesion.valid == null
 
     if (task.fields != null) {
         let fields_element = document.getElementById('fields')
@@ -259,7 +256,7 @@ let load_lesion = (i) => {
             let fiel_label = document.createElement('label')
             fiel_label.innerText = field_name + ':'
             let field_span = null
-            if (field.list) {
+            if (field.list || field.longiseg_list) {
                 field_span = document.createElement('ul')
                 field_span.style = 'max-height: 200px; overflow: auto;'
                 let list = JSON.parse(lesion[field_name].replaceAll("'", '"'))
@@ -272,6 +269,7 @@ let load_lesion = (i) => {
                 field_span = document.createElement('span')
                 field_span.innerText = lesion[field_name]
             }
+            field_span.id = field_name + '_value'
             field_container.appendChild(fiel_label)
             field_container.appendChild(field_span)
             fields_element.appendChild(field_container)
@@ -332,27 +330,11 @@ let load_lesion = (i) => {
     Promise.all(promises).then((images) => load_lesion_viewer(images, image_parameters, lesion, current_lesion_index))
 }
 
-let save_validation = () => {
-    localStorage.setItem(JSON.stringify(validation))
-}
-
 let create_table = () => {
-    let table = { 'name': [], 'description': [], 'comment': [], 'valid': [] }
-    // let values = []
     let rowData = []
     let i = 0
     for (let lesion of lesions) {
-        table['name'].push(lesion.name)
-        table['description'].push(lesion.description)
-        let info = validation[lesion.name];
-        if (info != null) {
-            table['comment'].push(info['comment'])
-            table['valid'].push(info['valid'])
-        } else {
-            table['comment'].push('')
-            table['valid'].push('')
-        }
-        data = { name: lesion.name, description: lesion.description }
+        data = { name: lesion.name, description: lesion.description, comment: lesion.comment, valid: lesion.valid }
 
         if (task.fields != null) {
             for (let field of task.fields) {
@@ -363,22 +345,6 @@ let create_table = () => {
         rowData.push(data)
 
     }
-    // let df = new dfd.DataFrame(table)
-    // df.plot("plot_div").table()
-
-    // values = [table.name, table.description, table.comment, table.valid]
-    // var data = [{
-    //     type: 'table',
-    //     header: { values: [["<b>Name</b>"], ["<b>Description</b>"], ["<b>Comment</b>"], ["<b>Valid</b>"]], },
-    //     cells: { values: values }
-    // }]
-
-    // Plotly.newPlot('plot_div', data);
-
-    // plot_div.on('plotly_click', function(data){
-    //     console.log(data)
-    // });
-
 
     // specify the columns
     let columnDefs = [
@@ -393,12 +359,14 @@ let create_table = () => {
                 field.field = field.name
             }
             
-            if(field.editable && data.length > 0 && typeof (data[0][field.field]) == "boolean" || field.name == 'best_methods') {
+            if(field.editable && field.longiseg_type == "bool") {
                 field.cellRenderer = 'checkboxRenderer'
             }
             columnDefs.push(field)
         }
     }
+    columnDefs.push({ field: "comment", sortable: true, filter: true, resizable: true, editable: true })
+    columnDefs.push({ field: "valid", sortable: true, filter: true, resizable: true, editable: true, cellRenderer: 'checkboxRenderer' })
 
     // let the grid know which columns and what data to use
     const gridOptions = {
@@ -412,7 +380,22 @@ let create_table = () => {
             let lesion_index = lesions.findIndex((lesion) => lesion.name == event.data.name)
             load_lesion(lesion_index)
         },
-        components: { checkboxRenderer: CheckboxRenderer }
+        components: { checkboxRenderer: CheckboxRenderer },
+        onCellValueChanged: (event)=> {
+            let field_name = event.colDef.field
+            let lesion_index = lesions.findIndex((lesion) => lesion.name == event.data.name)
+            let lesion = lesions[lesion_index]
+            lesion[field_name] = event.value
+            let element = document.getElementById(field_name + '_value')
+            if(element != null) {
+                // could check element.tagName
+                element.innerText = lesion[field_name]
+                element.value = lesion[field_name]
+                element.checked = lesion[field_name]
+                element.indeterminate = false
+            }
+            save_in_local_storage()
+        }
         // columnTypes: { numberColumn: { width: 100, filter: 'agNumberColumnFilter' } }
     };
 
@@ -461,17 +444,8 @@ window.addEventListener("resize", function (event) {
 
 let load_lesions = (l) => {
     lesions = l
-    // let i = 0
-    // for(let lesion of lesions) {
-    //     for(let type of ['name', 'descritpion', 'images', 'location', 'location_voxel']) {
-    //         if(lesion[type] == null && task.field_types[type] == null) {
-    //             lesion[type] = i
-    //         }
-    //         lesion[type] = lesion[type] | lesion[task.field_names[type]]
-    //     }
-    //     i++
-    // }
     if (lesions.length > 0) {
+        load_from_local_storage()
         let viewer_container = document.getElementById('viewer-container')
         viewer_container.classList.remove('hide')
         create_table()
@@ -484,12 +458,6 @@ let load_lesions = (l) => {
 
 let load_task = (file) => {
     task = JSON.parse(file)
-    // if(task.fields != null) {
-    //     task.field_names = {}
-    //     for(let field of task.fields) {
-    //         task.field_names[field.type] = field.name
-    //     }
-    // }
     if (task instanceof Array) {
         load_lesions(task)
     } else if (task.lesions instanceof Array) {
@@ -514,9 +482,14 @@ CheckboxRenderer.prototype.checkedHandler = function (e) {
     let checked = e.target.checked;
     let colId = this.params.column.colId;
     this.params.node.setDataValue(colId, checked);
-    let lesion_index = lesions.findIndex((lesion) => lesion.name == this.params.data.name)
-    let lesion = lesions[lesion_index]
-    lesion[colId] = checked
+    // let lesion_index = lesions.findIndex((lesion) => lesion.name == this.params.data.name)
+    // let lesion = lesions[lesion_index]
+    // lesion[colId] = checked
+    // save_in_local_storage()
+    // let checkbox_element = document.getElementById(colId + '_value')
+    // checkbox_element.value = checked
+    // checkbox_element.indeterminate = false
+    // checkbox_element.innerText = checked
 }
 
 CheckboxRenderer.prototype.getGui = function (params) {
@@ -525,6 +498,53 @@ CheckboxRenderer.prototype.getGui = function (params) {
 
 CheckboxRenderer.prototype.destroy = function (params) {
     this.eGui.removeEventListener('click', this.checkedHandler);
+}
+
+let save_in_local_storage = ()=> {
+    if(lesions == null) {
+        return
+    }
+    let lesions_string = JSON.stringify(lesions)
+    localStorage.setItem(task != null && task.name ? task.name : 'lesions', lesions_string)
+}
+
+let load_from_local_storage = ()=> {
+    let lesions_string = localStorage.getItem(task != null && task.name ? task.name : 'lesions')
+    if(lesions_string != null && lesions_string.length > 0) {
+        let stored_lesions = JSON.parse(lesions_string)
+        let stored_lesion_found = stored_lesions.findIndex((sl)=> lesions.findIndex((l)=> l.name == sl.name) >= 0) >= 0
+        if(stored_lesion_found) {
+            let overwrite = confirm('One or more lesion information was stored in this browser.\nDo you want to overwrite it?\n (Choose "Ok" to overwrite, or "Cancel" to load the selected file without browser data)')
+            if(overwrite) {
+                // just overwrite editable data
+                for(let lesion of lesions) {         
+                    let stored_lesion_index = stored_lesions.findIndex((l)=> l.name == lesion.name)
+                    if(stored_lesion_index < 0 || stored_lesion_index >= stored_lesions.length) {
+                        continue
+                    }
+                    let stored_lesion = stored_lesions[stored_lesion_index]
+                    if (task.fields != null) {
+                        for (let field of task.fields) {
+                            let field_name = field.field || field.name
+                            if(field.editable) {
+                                lesion[field_name] = stored_lesion[field_name]
+                            }
+                        }
+                    }
+                    lesion.comment = stored_lesion.comment
+                    lesion.valid = stored_lesion.valid
+                }
+            }
+        }
+    }
+}
+
+let set_data_selected_row = (field_name, value)=> {
+    let selected_nodes = grid.gridOptions.api.getSelectedNodes()
+    if(selected_nodes.length > 0) {
+        let selected_node = selected_nodes[0]
+        selected_node.setDataValue(field_name, value)
+    }
 }
 
 document.addEventListener("DOMContentLoaded", function (event) {
@@ -582,36 +602,28 @@ document.addEventListener("DOMContentLoaded", function (event) {
             })
     };
 
-    let comment = document.getElementById('comment');
+    let comment = document.getElementById('comment_value');
     comment.addEventListener('change', () => {
-        let lesion_name = lesions[current_lesion_index]['name']
-        let info = validation[lesion_name];
-        if (info != null) {
-            info['comment'] = comment.value
-        } else {
-            validation[lesion_name] = { 'comment': comment.value, 'valid': null }
-        }
+        let lesion = lesions[current_lesion_index]
+        lesion.comment = comment.value
+        set_data_selected_row('comment', lesion.comment)
     })
 
-    let valid = document.getElementById('valid');
+    let valid = document.getElementById('valid_value');
     valid.addEventListener('change', () => {
-        let lesion_name = lesions[current_lesion_index]['name']
-        let info = validation[lesion_name];
-        if (info != null) {
-            info['valid'] = valid.checked
-        } else {
-            validation[lesion_name] = { 'valid': valid.checked, 'comment': '' }
-        }
+        let lesion = lesions[current_lesion_index]
+        lesion.valid = valid.checked
+        set_data_selected_row('valid', lesion.valid)
     })
 
     let save = document.getElementById('save');
     save.addEventListener('click', () => {
-        validation_string = JSON.stringify(validation)
+        let lesions_string = JSON.stringify(lesions)
 
-        var data_string = "data:text/json;charset=utf-8," + encodeURIComponent(validation_string);
+        var data_string = "data:text/json;charset=utf-8," + encodeURIComponent(lesions_string);
         var download_node = document.createElement('a');
         download_node.setAttribute("href", data_string);
-        download_node.setAttribute("download", "validation.json");
+        download_node.setAttribute("download", "lesions.json");
         document.body.appendChild(download_node); // required for firefox
         download_node.click();
         download_node.remove();
@@ -619,22 +631,22 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     let prev_button = document.getElementById('prev')
     prev_button.addEventListener('click', () => {
-        let selectedNodes = grid.gridOptions.api.getSelectedNodes()
-        let currentRow = selectedNodes.length > 0 && selectedNodes[0].displayed ? selectedNodes[0].rowIndex - 1 : 1
-        if (currentRow < 0) {
-            currentRow = grid.gridOptions.api.getDisplayedRowCount() - 1;
+        let selected_nodes = grid.gridOptions.api.getSelectedNodes()
+        let current_row = selected_nodes.length > 0 && selected_nodes[0].displayed ? selected_nodes[0].rowIndex - 1 : 1
+        if (current_row < 0) {
+            current_row = grid.gridOptions.api.getDisplayedRowCount() - 1;
         }
-        grid.gridOptions.api.selectIndex(currentRow)
+        grid.gridOptions.api.selectIndex(current_row)
     })
 
     let next_button = document.getElementById('next')
     next_button.addEventListener('click', () => {
-        let selectedNodes = grid.gridOptions.api.getSelectedNodes()
-        let currentRow = selectedNodes.length > 0 && selectedNodes[0].displayed ? grid.gridOptions.api.getSelectedNodes()[0].rowIndex + 1 : -1
-        if (currentRow >= grid.gridOptions.api.getDisplayedRowCount()) {
-            currentRow = 0;
+        let selected_nodes = grid.gridOptions.api.getSelectedNodes()
+        let current_row = selected_nodes.length > 0 && selected_nodes[0].displayed ? grid.gridOptions.api.getSelectedNodes()[0].rowIndex + 1 : -1
+        if (current_row >= grid.gridOptions.api.getDisplayedRowCount()) {
+            current_row = 0;
         }
-        grid.gridOptions.api.selectIndex(currentRow)
+        grid.gridOptions.api.selectIndex(current_row)
     })
 
     let go_to_lesion_button = document.getElementById('go-to-lesion')
@@ -642,7 +654,6 @@ document.addEventListener("DOMContentLoaded", function (event) {
         go_to_lesion(lesions[current_lesion_index])
     })
 });
-
 
 // Draw test
 
