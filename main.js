@@ -215,10 +215,17 @@ let go_to_voxel_coordinates = (loc) => {
 }
 
 let lesion_location_to_voxel_coordinates = (loc) => {
+    let orientation = papayaContainers[0].viewer.screenVolumes[0].volume.header.orientation.orientation
+    if(!orientation.startsWith('XYZ')) {
+        console.log('Warning, image orientation is not XYZ')
+    }
     let xDim = papayaContainers[0].viewer.volume.getXDim() - 1
     let yDim = papayaContainers[0].viewer.volume.getYDim() - 1
     let zDim = papayaContainers[0].viewer.volume.getZDim() - 1
-    return [xDim - loc[0], yDim - loc[1], zDim - loc[2]]
+    let invertX = orientation[3] == '-'
+    let invertY = orientation[4] == '+'
+    let invertZ = orientation[5] == '+'
+    return [invertX ? xDim - loc[0] : loc[0], invertY ? yDim - loc[1] : loc[1], invertZ ? zDim - loc[2] : loc[2]]
 }
 
 let go_to_lesion = (lesion) => {
@@ -457,11 +464,13 @@ let load_lesions = (l) => {
 }
 
 let load_task = (file) => {
-    task = JSON.parse(file)
-    if (task instanceof Array) {
-        load_lesions(task)
-    } else if (task.lesions instanceof Array) {
-        load_lesions(task.lesions)
+    let task_json = JSON.parse(file)
+    if (task_json instanceof Array) {
+        task.lesions = task_json
+        load_lesions(task_json)
+    } else if (task_json.lesions instanceof Array) {
+        task = task_json
+        load_lesions(task_json.lesions)
     }
 }
 
@@ -618,7 +627,8 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     let save = document.getElementById('save');
     save.addEventListener('click', () => {
-        let lesions_string = JSON.stringify(lesions)
+        task.lesion = lesions
+        let lesions_string = JSON.stringify(task)
 
         var data_string = "data:text/json;charset=utf-8," + encodeURIComponent(lesions_string);
         var download_node = document.createElement('a');
