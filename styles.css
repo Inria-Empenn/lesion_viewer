@@ -1,3 +1,11 @@
+/* #papaya-container2 {
+    display: none;
+} */
+
+.papaya-menu-label {
+    font-size: 12px;
+}
+
 #info, #fields {
     display: flex;
     flex-direction: column;
@@ -31,9 +39,13 @@ button, textarea, label, input, #description {
     margin: auto;
 }
 
-#papaya-container {
+#papaya-containers.row {
     display: flex;
     flex-direction: row;
+}
+#papaya-containers.column {
+    display: flex;
+    flex-direction: column;
 }
 
 #papaya-toolbox-container {

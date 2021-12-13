@@ -42,11 +42,11 @@ let create_toggle_button = (button_name, image_index, visible) => {
     toggle_button.addEventListener('click', () => {
         let visible = toggle_button.getAttribute('data-visible')
         if (visible == 'true') {
-            papaya.Container.hideImage(0, image_index)
+            papaya.Container.hideImage(1, image_index)
             toggle_button.innerHTML = "Show " + button_name
             toggle_button.setAttribute('data-visible', 'false')
         } else {
-            papaya.Container.showImage(0, image_index)
+            papaya.Container.showImage(1, image_index)
             toggle_button.innerHTML = "Hide " + button_name
             toggle_button.setAttribute('data-visible', 'true')
         }
@@ -124,7 +124,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         go_to_lesion(lesions[current_lesion_index])
         for (let image_parameter of image_parameters) {
             if (image_parameter.display != null && !image_parameter.display) {
-                papaya.Container.hideImage(0, image_parameter.image_index)
+                papaya.Container.hideImage(1, image_parameter.image_index)
             }
         }
         // let sv = papayaContainers[0].viewer.screenVolumes
@@ -139,7 +139,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
     let description = document.getElementById('description')
     description.innerText = `${lesion['name']} - ${lesion_index + 1}/${lesions.length}`
-
+    
+    papaya.Container.resetViewer(1, params);
+    params['encodedImages'] = [params['encodedImages'][0]]
+    params['loadingComplete'] = null
     papaya.Container.resetViewer(0, params);
 
     hide_loader()
@@ -422,12 +425,13 @@ let create_table = () => {
 
 let resize_viewer = (container) => {
 
+    let papaya_containers = document.getElementById('papaya-containers')
+    let papaya_container0 = document.getElementById('papaya-container0')
     let papaya_container1 = document.getElementById('papaya-container1')
-    let papaya_container2 = document.getElementById('papaya-container2')
     let viewer_ratio = 1.5
 
-    let padding_height = papayaContainers.length > 0 ? papayaContainers[0].containerHtml.height() - papayaContainers[0].getViewerDimensions()[1] : 0
-    console.log(padding_height)
+    let padding_height = papayaContainers.length > 0 ? papayaContainers[1].containerHtml.height() - papayaContainers[1].getViewerDimensions()[1] : 0
+    
     if (container == null) {
         container = {}
         container.width = window.innerWidth - 250 - 16
@@ -435,21 +439,64 @@ let resize_viewer = (container) => {
     }
 
     let container_ratio = container.width / container.height
+    
+    let side_by_side = !papaya_container0.classList.contains('hide')
+    if(side_by_side) {
 
-    if (container_ratio > viewer_ratio) {
-        papaya_container1.style.height = '' + (container.height / 2) + 'px'
-        papaya_container1.style.width = '' + (container.height * viewer_ratio) + 'px'
-        papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
-        papaya_container2.style.height = '' + (container.height / 2)+ 'px'
-        papaya_container2.style.width = '' + (container.height * viewer_ratio) + 'px'
-        papaya_container2.style['margin-bottom'] = '' + padding_height + 'px'
+
+        if (container_ratio > viewer_ratio) {
+
+            if (container_ratio > 2 * viewer_ratio) {
+                papaya_container0.style.height = '' + (container.height) + 'px'
+                papaya_container0.style.width = '' + (container.height * viewer_ratio) + 'px'
+                papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_container1.style.height = '' + (container.height)+ 'px'
+                papaya_container1.style.width = '' + (container.height * viewer_ratio) + 'px'
+                papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_containers.classList.replace('column', 'row')
+            } else {
+                papaya_container0.style.width = '' + (container.width / 2) + 'px'
+                papaya_container0.style.height = '' + (container.width / viewer_ratio) + 'px'
+                papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_container1.style.width = '' + (container.width / 2) + 'px'
+                papaya_container1.style.height = '' + ( container.width / viewer_ratio) + 'px'
+                papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_containers.classList.replace('column', 'row')
+            }
+    
+        } else {
+
+            container.height -= padding_height
+            container_ratio = container.width / container.height
+    
+            if (container_ratio < viewer_ratio / 2) {
+                papaya_container0.style.width = '' + (container.width) + 'px'
+                papaya_container0.style.height = '' + (container.width / viewer_ratio) + 'px'
+                papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_container1.style.width = '' + (container.width) + 'px'
+                papaya_container1.style.height = '' + ( container.width / viewer_ratio) + 'px'
+                papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_containers.classList.replace('row', 'column')
+            } else {
+                papaya_container0.style.height = '' + (container.height / 2) + 'px'
+                papaya_container0.style.width = '' + (container.height * viewer_ratio/2) + 'px'
+                papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_container1.style.height = '' + (container.height / 2) + 'px'
+                papaya_container1.style.width = '' + (container.height * viewer_ratio/2) + 'px'
+                papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
+                papaya_containers.classList.replace('row', 'column')
+            }
+        }
     } else {
-        papaya_container1.style.width = '' + (container.width / 2) + 'px'
-        papaya_container1.style.height = '' + (container.width / viewer_ratio) + 'px'
+        
+        if (container_ratio > viewer_ratio) {
+            papaya_container1.style.height = '' + (container.height) + 'px'
+            papaya_container1.style.width = '' + (container.height * viewer_ratio) + 'px'
+        } else {
+            papaya_container1.style.width = '' + (container.width) + 'px'
+            papaya_container1.style.height = '' + (container.width / viewer_ratio) + 'px'
+        }
         papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
-        papaya_container2.style.width = '' + (container.width / 2) + 'px'
-        papaya_container2.style.height = '' + (container.width / viewer_ratio) + 'px'
-        papaya_container2.style['margin-bottom'] = '' + padding_height + 'px'
     }
     setTimeout(() => papaya.Container.resizePapaya(), 250)
 }
@@ -568,9 +615,20 @@ let set_data_selected_row = (field_name, value)=> {
 document.addEventListener("DOMContentLoaded", function (event) {
     resize_viewer()
 
-    let papaya_container = document.getElementById('papaya-container1')
+    let papaya_container = document.getElementById('papaya-container0')
     papaya_container.addEventListener('wheel', (event) => {
         event.preventDefault()
+    })
+
+    let side_by_side_button = document.getElementById('side-by-side')
+    side_by_side_button.addEventListener('click', () => {
+        let papaya_container0 = document.getElementById('papaya-container0')
+        if(papaya_container0.classList.contains('hide')) {
+            papaya_container0.classList.remove('hide')
+        } else {
+            papaya_container0.classList.add('hide')
+        }
+        resize_viewer()
     })
 
     // let load_lesions_data = document.getElementById('load_lesions_data')

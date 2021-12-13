@@ -22,7 +22,7 @@
     <link rel="stylesheet" type="text/css" href="styles.css" />
 
     <!-- <script type="text/javascript" src="libs/Papaya/release/current/standard/papaya.js"></script> -->
-    <!-- <script type="text/javascript" src="libs/papaya.js"></script> -->
+    <script type="text/javascript" src="libs/papaya.js"></script>
     
 	<!-- <script src='https://cdn.plot.ly/plotly-2.4.2.min.js'></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/danfojs@0.3.3/lib/bundle.min.js"></script> -->
@@ -33,7 +33,7 @@
 
 
     <!-- JS debug start -->
-
+<!-- 
     <script type="text/javascript" src="libs/Papaya/src/js/data/sample-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas.js"></script>
@@ -100,7 +100,7 @@
     <script type="text/javascript" src="libs/Papaya/src/js/viewer/screenvol.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/viewer/viewer.js"></script>
 
-    <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script>
+    <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script> -->
 
     <!-- JS debug end-->
 
@@ -115,15 +115,21 @@
         
         <div id="papaya-toolbox-container">
             
-            <div id="papaya-container1">
-                <div class="papaya"></div>
-            </div>
-            <div id="papaya-container2">
-                <div class="papaya"></div>
-            </div>
+            <div id="papaya-containers" class="row">
+
+                <div id="papaya-container0">
+                    <div class="papaya"></div>
+                </div>
+                <div id="papaya-container1">
+                    <div class="papaya"></div>
+                </div>
     
+            </div>
+
             <div id="toolbox">
     
+                <button id="side-by-side">Toggle side by side</button>
+
                 <div id="toggle-visibility-buttons">
                 </div>
                 <button id="go-to-lesion">Go to current lesion</button>
