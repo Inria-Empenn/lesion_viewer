@@ -1,3 +1,5 @@
+papaya.Container.syncViewers = true;
+
 // Remove smooth display:
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'smoothDisplay', 'No', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'showOrientation', 'Yes', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
@@ -420,7 +422,8 @@ let create_table = () => {
 
 let resize_viewer = (container) => {
 
-    let papaya_container = document.getElementById('papaya-container')
+    let papaya_container1 = document.getElementById('papaya-container1')
+    let papaya_container2 = document.getElementById('papaya-container2')
     let viewer_ratio = 1.5
 
     let padding_height = papayaContainers.length > 0 ? papayaContainers[0].containerHtml.height() - papayaContainers[0].getViewerDimensions()[1] : 0
@@ -434,13 +437,19 @@ let resize_viewer = (container) => {
     let container_ratio = container.width / container.height
 
     if (container_ratio > viewer_ratio) {
-        papaya_container.style.height = '' + container.height + 'px'
-        papaya_container.style.width = '' + (container.height * viewer_ratio) + 'px'
-        papaya_container.style['margin-bottom'] = '' + padding_height + 'px'
+        papaya_container1.style.height = '' + (container.height / 2) + 'px'
+        papaya_container1.style.width = '' + (container.height * viewer_ratio) + 'px'
+        papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
+        papaya_container2.style.height = '' + (container.height / 2)+ 'px'
+        papaya_container2.style.width = '' + (container.height * viewer_ratio) + 'px'
+        papaya_container2.style['margin-bottom'] = '' + padding_height + 'px'
     } else {
-        papaya_container.style.width = '' + container.width + 'px'
-        papaya_container.style.height = '' + (container.width / viewer_ratio) + 'px'
-        papaya_container.style['margin-bottom'] = '' + padding_height + 'px'
+        papaya_container1.style.width = '' + (container.width / 2) + 'px'
+        papaya_container1.style.height = '' + (container.width / viewer_ratio) + 'px'
+        papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
+        papaya_container2.style.width = '' + (container.width / 2) + 'px'
+        papaya_container2.style.height = '' + (container.width / viewer_ratio) + 'px'
+        papaya_container2.style['margin-bottom'] = '' + padding_height + 'px'
     }
     setTimeout(() => papaya.Container.resizePapaya(), 250)
 }
@@ -559,7 +568,7 @@ let set_data_selected_row = (field_name, value)=> {
 document.addEventListener("DOMContentLoaded", function (event) {
     resize_viewer()
 
-    let papaya_container = document.getElementById('papaya-container')
+    let papaya_container = document.getElementById('papaya-container1')
     papaya_container.addEventListener('wheel', (event) => {
         event.preventDefault()
     })

@@ -29,7 +29,12 @@ button, textarea, label, input, #description {
     margin: 20px;
     display:inline-block;
     margin: auto;
-  }
+}
+
+#papaya-container {
+    display: flex;
+    flex-direction: row;
+}
 
 #papaya-toolbox-container {
     display: flex;
