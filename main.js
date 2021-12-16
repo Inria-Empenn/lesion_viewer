@@ -18,7 +18,6 @@ let current_lesion_index = 0;
 let image_archive = null;
 let task = {};
 let lesions = [];
-let toggle_buttons = [];
 let grid = null;
 let initialized = false;
 let segmentation_data = null;
@@ -31,6 +30,42 @@ let show_loader = () => {
 let hide_loader = () => {
     let loader = document.getElementById('loader')
     loader.classList.add('hide')
+}
+
+let create_checkbox = (name, image_index, visible) => {
+    let container = document.getElementById('toggle-visibility-buttons')
+
+    {/* <div>
+        <label for="checkbox_name">name</label>
+        <input type="checkbox" name="name" id="checkbox_name">
+    </div> */}
+
+    let div = document.createElement('div');
+    div.classList.add('checkbox')
+    let label = document.createElement("label");
+    label.setAttribute('for', 'checkbox_' + name)
+    label.innerText = name
+    let input = document.createElement("input");
+    input.setAttribute('type', 'checkbox')
+    input.setAttribute('id', 'checkbox_' + name)
+    input.setAttribute('name', name)
+    input.checked = visible
+    input.disabled = true
+    div.appendChild(input)
+    div.appendChild(label)
+    container.appendChild(div);
+
+    input.addEventListener('change', (event) => {
+        if(event.target.checked) {
+            if(image_index < papayaContainers[1].viewer.screenVolumes.length || papayaContainers[1].viewer.loadingVolume != null) {
+                papaya.Container.showImage(1, image_index)
+            }
+        } else {
+            if(image_index < papayaContainers[1].viewer.screenVolumes.length || papayaContainers[1].viewer.loadingVolume != null) {
+                papaya.Container.hideImage(1, image_index)
+            }
+        }
+    })
 }
 
 let create_toggle_button = (button_name, image_index, visible) => {
@@ -51,7 +86,6 @@ let create_toggle_button = (button_name, image_index, visible) => {
             toggle_button.setAttribute('data-visible', 'true')
         }
     })
-    toggle_buttons.push(toggle_button)
 }
 
 let loaded_images = []
@@ -62,18 +96,6 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         delete window[li.name]
     }
     loaded_images = []
-
-    // let new_loaded_images = []
-    // for(let li of loaded_images) {
-    //     if(image_parameters.findIndex((ip)=>ip.file_name==li.file_name)){
-    //         papaya.Container.removeImage(0, li.index)
-    //         delete window[li.name]
-    //     } else {
-    //         new_loaded_images.push(li)
-    //     }
-    // }
-    // loaded_images = new_loaded_images
-
     params = {}
     params['encodedImages'] = []
 
@@ -81,51 +103,33 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     // let screen_volumes = []
     for (let image_parameter of image_parameters) {
 
-        // if(loaded_images.findIndex((li)=>li.file_name==image_parameter.file_name)){
-        //     continue
-        // } else {
-        //     image_parameter.parameters.max = image_parameter.parameters.max != null && image_parameter.parameters.max == 1 ? 2 : image_parameter.parameters.max
-        //     papaya.Container.addImage(0, images[image_parameters.promise_index], image_parameter.parameters)
-        // }
-
-        // params['t0'] = {"min": 0, "max": 1, "lut": "Red Overlay"};
         let file_name = image_parameter.file_name
         let parameters = image_parameter.parameters
         let image_name = 'lesion_viewer_' + file_name.replace('/', '_').replace('.nii.gz', '')
         params['encodedImages'].push(image_name)
         window[image_name] = images[image_index]
         loaded_images.push({ name: image_name, file_name: file_name, index: image_index })
-        // parameters['interpolation'] = false
         params[image_name] = parameters
-        // params[file_name] = image_parameters[key]
-        create_toggle_button(file_name.split('/').at(-1), image_index, image_parameter.display)
+        create_checkbox(image_parameter.name || file_name.split('/').at(-1), image_index, image_parameter.display)
         image_parameter.image_index = image_index
-        // for(let i=0 ; i<papayaContainers[0].viewer.screenVolumes.length ; i++) {
-        //     if(papayaContainers[0].viewer.screenVolumes[i].volume.fileName == image_name) {
-        //         screen_volumes.push(papayaContainers[0].viewer.screenVolumes[i])
-        //     }
-        // }
         image_index++
     }
-    // Reorder
-    // papayaContainers[0].viewer.screenVolumes = screen_volumes
-    // let i3 = params['encodedImages'][3]
-    // params['encodedImages'][3] = params['encodedImages'][2]
-    // params['encodedImages'][2] = i3
-
     params['worldSpace'] = false
-    // loc = lesion['location']
-    // params['coordinate'] = [loc[2], loc[1], loc[0]]
-    params['coordinate'] = lesion['location_voxel'] // [-loc[0], -loc[1], loc[2]]
+    params['coordinate'] = lesion['location_voxel']
     params['smoothDisplay'] = false
     params['ignoreNiftiTransforms'] = true
-    // params['syncOverlaySeries'] = false
     params['loadingComplete'] = () => {
         go_to_lesion(lesions[current_lesion_index])
         for (let image_parameter of image_parameters) {
             if (image_parameter.display != null && !image_parameter.display) {
                 papaya.Container.hideImage(1, image_parameter.image_index)
             }
+        }
+
+        let container = document.getElementById('toggle-visibility-buttons')
+        let checkboxes = document.getElementsByTagName('input')
+        for(let checkbox of checkboxes) {
+            checkbox.disabled = false
         }
         // let sv = papayaContainers[0].viewer.screenVolumes
         // let volume = sv[sv.length - 1].volume
@@ -328,14 +332,13 @@ let load_lesion = (i) => {
         // }
 
         promises.push(image_archive.file(file_name).async("base64"))
-        image_parameters.push({ file_name: file_name, parameters: image_description.parameters, display: image_description.display })
+        image_parameters.push({ name: image_description.name, file_name: file_name, parameters: image_description.parameters, display: image_description.display })
     }
 
     description.innerText = 'loading ' + lesion['name'] + '...'
-
-    for (let tb of toggle_buttons) {
-        tb.remove();
-    }
+    
+    let visibility_checkboxes = document.getElementById('toggle-visibility-buttons')
+    visibility_checkboxes.replaceChildren();
 
     show_loader()
 
@@ -447,6 +450,7 @@ let resize_viewer = (container) => {
         if (container_ratio > viewer_ratio) {
 
             if (container_ratio > 2 * viewer_ratio) {
+                // Very horizontal
                 papaya_container0.style.height = '' + (container.height) + 'px'
                 papaya_container0.style.width = '' + (container.height * viewer_ratio) + 'px'
                 papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
@@ -455,11 +459,12 @@ let resize_viewer = (container) => {
                 papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
                 papaya_containers.classList.replace('column', 'row')
             } else {
+                // Horizontal
                 papaya_container0.style.width = '' + (container.width / 2) + 'px'
-                papaya_container0.style.height = '' + (container.width / viewer_ratio) + 'px'
+                papaya_container0.style.height = '' + (0.5 * container.width / viewer_ratio) + 'px'
                 papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
                 papaya_container1.style.width = '' + (container.width / 2) + 'px'
-                papaya_container1.style.height = '' + ( container.width / viewer_ratio) + 'px'
+                papaya_container1.style.height = '' + (0.5 * container.width / viewer_ratio) + 'px'
                 papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
                 papaya_containers.classList.replace('column', 'row')
             }
@@ -470,6 +475,7 @@ let resize_viewer = (container) => {
             container_ratio = container.width / container.height
     
             if (container_ratio < viewer_ratio / 2) {
+                // Very vertical
                 papaya_container0.style.width = '' + (container.width) + 'px'
                 papaya_container0.style.height = '' + (container.width / viewer_ratio) + 'px'
                 papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
@@ -478,6 +484,7 @@ let resize_viewer = (container) => {
                 papaya_container1.style['margin-bottom'] = '' + padding_height + 'px'
                 papaya_containers.classList.replace('row', 'column')
             } else {
+                // Vertical
                 papaya_container0.style.height = '' + (container.height / 2) + 'px'
                 papaya_container0.style.width = '' + (container.height * viewer_ratio/2) + 'px'
                 papaya_container0.style['margin-bottom'] = '' + padding_height + 'px'
@@ -615,10 +622,12 @@ let set_data_selected_row = (field_name, value)=> {
 document.addEventListener("DOMContentLoaded", function (event) {
     resize_viewer()
 
-    let papaya_container = document.getElementById('papaya-container0')
-    papaya_container.addEventListener('wheel', (event) => {
-        event.preventDefault()
-    })
+    for(let i=0 ; i<2 ; i++) {
+        let papaya_container = document.getElementById('papaya-container' + i)
+        papaya_container.addEventListener('wheel', (event) => {
+            event.preventDefault()
+        })
+    }
 
     let side_by_side_button = document.getElementById('side-by-side')
     side_by_side_button.addEventListener('click', () => {
@@ -729,6 +738,14 @@ document.addEventListener("DOMContentLoaded", function (event) {
     let go_to_lesion_button = document.getElementById('go-to-lesion')
     go_to_lesion_button.addEventListener('click', () => {
         go_to_lesion(lesions[current_lesion_index])
+    })
+
+    let toggle_crosshairs_button = document.getElementById('toggle-crosshairs')
+    toggle_crosshairs_button.addEventListener('click', () => {
+        for(let i=0 ; i<2 ; i++) {
+            papayaContainers[i].preferences.showCrosshairs = papayaContainers[i].preferences.showCrosshairs == 'Yes' ? 'No' : 'Yes'
+            papayaContainers[i].viewer.drawViewer()
+        }
     })
 });
 

@@ -1,6 +1,11 @@
-/* #papaya-container2 {
-    display: none;
-} */
+.checkbox input[type='checkbox'], .checkbox label {
+    cursor: pointer;
+    user-select: none;
+}
+
+button, input[type='file'] {
+    cursor: pointer;
+}
 
 .papaya-menu-label {
     font-size: 12px;
