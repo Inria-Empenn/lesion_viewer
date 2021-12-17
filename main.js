@@ -703,7 +703,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
 
     let save = document.getElementById('save');
     save.addEventListener('click', () => {
-        task.lesion = lesions
+        task.lesions = lesions
         let lesions_string = JSON.stringify(task)
 
         var data_string = "data:text/json;charset=utf-8," + encodeURIComponent(lesions_string);
