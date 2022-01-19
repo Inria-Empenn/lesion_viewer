@@ -11,7 +11,7 @@ papaya.viewer.Viewer.MAX_OVERLAYS = 12;
 papaya.Container.atlasWorldSpace = false
 var params = [];
 
-params["images"] = [];
+params['images'] = [];
 
 let current_lesion_index = 0;
 
@@ -36,16 +36,16 @@ let create_checkbox = (name, image_index, visible) => {
     let container = document.getElementById('toggle-visibility-buttons')
 
     {/* <div>
-        <label for="checkbox_name">name</label>
-        <input type="checkbox" name="name" id="checkbox_name">
+        <label for='checkbox_name'>name</label>
+        <input type='checkbox' name='name' id='checkbox_name'>
     </div> */}
 
     let div = document.createElement('div');
     div.classList.add('checkbox')
-    let label = document.createElement("label");
+    let label = document.createElement('label');
     label.setAttribute('for', 'checkbox_' + name)
     label.innerText = name
-    let input = document.createElement("input");
+    let input = document.createElement('input');
     input.setAttribute('type', 'checkbox')
     input.setAttribute('id', 'checkbox_' + name)
     input.setAttribute('name', name)
@@ -70,19 +70,19 @@ let create_checkbox = (name, image_index, visible) => {
 
 let create_toggle_button = (button_name, image_index, visible) => {
     let container = document.getElementById('toggle-visibility-buttons')
-    let toggle_button = document.createElement("button");
-    toggle_button.innerHTML = visible ? "Hide " + button_name : "Show " + button_name;
+    let toggle_button = document.createElement('button');
+    toggle_button.innerHTML = visible ? 'Hide ' + button_name : 'Show ' + button_name;
     container.appendChild(toggle_button);
     toggle_button.setAttribute('data-visible', visible ? 'true' : 'false')
     toggle_button.addEventListener('click', () => {
         let visible = toggle_button.getAttribute('data-visible')
         if (visible == 'true') {
             papaya.Container.hideImage(1, image_index)
-            toggle_button.innerHTML = "Show " + button_name
+            toggle_button.innerHTML = 'Show ' + button_name
             toggle_button.setAttribute('data-visible', 'false')
         } else {
             papaya.Container.showImage(1, image_index)
-            toggle_button.innerHTML = "Hide " + button_name
+            toggle_button.innerHTML = 'Hide ' + button_name
             toggle_button.setAttribute('data-visible', 'true')
         }
     })
@@ -154,9 +154,9 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     // if (!initialized) {
     //     initialized = true;
     // let canvas = papayaContainers[0].viewer.canvas
-    // canvas.addEventListener("mousemove", listenerMouseMove, false);
-    // canvas.addEventListener("mousedown", listenerMouseDown, false);
-    // canvas.addEventListener("mouseup", listenerMouseUp, false);
+    // canvas.addEventListener('mousemove', listenerMouseMove, false);
+    // canvas.addEventListener('mousedown', listenerMouseDown, false);
+    // canvas.addEventListener('mouseup', listenerMouseUp, false);
     // }
 }
 
@@ -245,6 +245,10 @@ let go_to_lesion = (lesion) => {
     // go_to_world_coordinates([loc[0], loc[1], loc[2]])
 }
 
+let capitalize_first_letter = (string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 let load_lesion = (i) => {
     current_lesion_index = i;
     if (current_lesion_index < 0) {
@@ -270,7 +274,7 @@ let load_lesion = (i) => {
             let field_name = field.field || field.name
             let field_container = document.createElement('div')
             let fiel_label = document.createElement('label')
-            fiel_label.innerText = field_name + ':'
+            fiel_label.innerText = capitalize_first_letter(field_name) + ':'
             let field_span = null
             if (field.list || field.longiseg_list) {
                 field_span = document.createElement('ul')
@@ -281,6 +285,18 @@ let load_lesion = (i) => {
                     li.innerText = item
                     field_span.appendChild(li)
                 }
+            } else if (field.editable && field.longiseg_type == 'bool') {
+                field_span = document.createElement('input');
+                field_span.setAttribute('type', 'checkbox')
+                field_span.setAttribute('data-field-name', field_name)
+                field_span.checked = lesion[field_name]
+                field_span.disabled = false
+                field_span.addEventListener('change', (event) => {
+                    let lesion = lesions[current_lesion_index]
+                    let field_name = event.target.getAttribute('data-field-name')
+                    lesion[field_name] = event.target.checked
+                    set_data_selected_row(field_name, event.target.checked)
+                })
             } else {
                 field_span = document.createElement('span')
                 field_span.innerText = lesion[field_name]
@@ -331,7 +347,7 @@ let load_lesion = (i) => {
         //     promise_index = promises.length
         // }
 
-        promises.push(image_archive.file(file_name).async("base64"))
+        promises.push(image_archive.file(file_name).async('base64'))
         image_parameters.push({ name: image_description.name, file_name: file_name, parameters: image_description.parameters, display: image_description.display })
     }
 
@@ -363,9 +379,9 @@ let create_table = () => {
 
     // specify the columns
     let columnDefs = [
-        { field: "name", sortable: true, filter: true, width: 150, resizable: true },
-        { field: "description", sortable: true, filter: true, flex: true, resizable: true },
-        // { field: "n_methods_which_detected_lesion", sortable: true, resizable: true, filter: 'agNumberColumnFilter' },
+        { field: 'name', sortable: true, filter: true, width: 150, resizable: true },
+        { field: 'description', sortable: true, filter: true, flex: true, resizable: true },
+        // { field: 'n_methods_which_detected_lesion', sortable: true, resizable: true, filter: 'agNumberColumnFilter' },
     ];
 
     if (task.fields != null) {
@@ -374,14 +390,14 @@ let create_table = () => {
                 field.field = field.name
             }
             
-            if(field.editable && field.longiseg_type == "bool") {
+            if(field.editable && field.longiseg_type == 'bool') {
                 field.cellRenderer = 'checkboxRenderer'
             }
             columnDefs.push(field)
         }
     }
-    columnDefs.push({ field: "comment", sortable: true, filter: true, resizable: true, editable: true })
-    columnDefs.push({ field: "valid", sortable: true, filter: true, resizable: true, editable: true, cellRenderer: 'checkboxRenderer' })
+    columnDefs.push({ field: 'valid', sortable: true, filter: true, resizable: true, editable: true, cellRenderer: 'checkboxRenderer' })
+    columnDefs.push({ field: 'comment', sortable: true, filter: true, resizable: true, editable: true })
 
     // let the grid know which columns and what data to use
     const gridOptions = {
@@ -402,7 +418,7 @@ let create_table = () => {
             let lesion = lesions[lesion_index]
             lesion[field_name] = event.value
             let element = document.getElementById(field_name + '_value')
-            if(element != null) {
+            if(lesion_index == current_lesion_index &&  element != null) {
                 // could check element.tagName
                 element.innerText = lesion[field_name]
                 element.value = lesion[field_name]
@@ -508,7 +524,7 @@ let resize_viewer = (container) => {
     setTimeout(() => papaya.Container.resizePapaya(), 250)
 }
 // resize_viewer({innerWidth: 400, innerHeight: 400})
-window.addEventListener("resize", function (event) {
+window.addEventListener('resize', function (event) {
     resize_viewer()
 })
 
@@ -619,7 +635,7 @@ let set_data_selected_row = (field_name, value)=> {
     }
 }
 
-document.addEventListener("DOMContentLoaded", function (event) {
+document.addEventListener('DOMContentLoaded', function (event) {
     resize_viewer()
 
     for(let i=0 ; i<2 ; i++) {
@@ -704,12 +720,12 @@ document.addEventListener("DOMContentLoaded", function (event) {
     let save = document.getElementById('save');
     save.addEventListener('click', () => {
         // task.lesion = lesions
-        let lesions_string = JSON.stringify(task)
+        let lesions_string = JSON.stringify(task, null, '\t')
 
-        var data_string = "data:text/json;charset=utf-8," + encodeURIComponent(lesions_string);
+        var data_string = 'data:text/json;charset=utf-8,' + encodeURIComponent(lesions_string);
         var download_node = document.createElement('a');
-        download_node.setAttribute("href", data_string);
-        download_node.setAttribute("download", "lesions.json");
+        download_node.setAttribute('href', data_string);
+        download_node.setAttribute('download', 'lesions.json');
         document.body.appendChild(download_node); // required for firefox
         download_node.click();
         download_node.remove();
@@ -785,8 +801,8 @@ let write_test_volume = (data) => {
 
 // write_test_volume(data)
 // let canvas = papayaContainers[0].viewer.canvas
-// canvas.addEventListener("mousemove", this.listenerMouseMove, false);
-// canvas.addEventListener("mousedown", this.listenerMouseDown, false);
-// // canvas.addEventListener("mouseout", this.listenerMouseOut, false);
-// // canvas.addEventListener("mouseleave", this.listenerMouseLeave, false);
-// canvas.addEventListener("mouseup", this.listenerMouseUp, false);
+// canvas.addEventListener('mousemove', this.listenerMouseMove, false);
+// canvas.addEventListener('mousedown', this.listenerMouseDown, false);
+// // canvas.addEventListener('mouseout', this.listenerMouseOut, false);
+// // canvas.addEventListener('mouseleave', this.listenerMouseLeave, false);
+// canvas.addEventListener('mouseup', this.listenerMouseUp, false);
