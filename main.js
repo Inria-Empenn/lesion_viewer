@@ -227,6 +227,9 @@ let go_to_voxel_coordinates = (loc) => {
 }
 
 let lesion_location_to_voxel_coordinates = (loc) => {
+    if(typeof(loc) == 'string') {
+        loc = JSON.parse(loc)
+    }
     let orientation = papayaContainers[0].viewer.screenVolumes[0].volume.header.orientation.orientation
     if(!orientation.startsWith('XYZ')) {
         console.log('Warning, image orientation is not XYZ')
@@ -337,7 +340,12 @@ let load_lesion = (i) => {
     //     image_descriptions.push(image_descriptions[image_descriptions.length-1])
     // }
 
+    let ni = 0
     for (let image_description of image_descriptions) {
+        if (ni>=11) {
+            break
+        }
+        ni++
         let file_name = image_description.file
         for (let f in image_archive.files) {
             if (f.split('/').at(-1) == file_name) {
@@ -639,6 +647,15 @@ let set_data_selected_row = (field_name, value)=> {
 }
 
 document.addEventListener('DOMContentLoaded', function (event) {
+    let papaya_container0 = document.getElementById('papaya-container0')
+
+    let side_by_side = localStorage.getItem('side-by-side')
+    if (side_by_side == 'true') {
+        papaya_container0.classList.remove('hide')
+    } else {
+        papaya_container0.classList.add('hide')
+    }
+
     resize_viewer()
 
     for(let i=0 ; i<2 ; i++) {
@@ -647,15 +664,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
             event.preventDefault()
         })
     }
-
+    
     let side_by_side_button = document.getElementById('side-by-side')
     side_by_side_button.addEventListener('click', () => {
-        let papaya_container0 = document.getElementById('papaya-container0')
         if(papaya_container0.classList.contains('hide')) {
             papaya_container0.classList.remove('hide')
         } else {
             papaya_container0.classList.add('hide')
         }
+        localStorage.setItem('side-by-side', !papaya_container0.classList.contains('hide'))
         resize_viewer()
     })
 
