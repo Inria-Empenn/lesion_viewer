@@ -89,6 +89,7 @@ let create_toggle_button = (button_name, image_index, visible) => {
 }
 
 let loaded_images = []
+let current_image_index = 0
 
 let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
@@ -96,6 +97,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         delete window[li.name]
     }
     loaded_images = []
+    current_image_index = 0
     params = {}
     params['encodedImages'] = []
 
@@ -114,6 +116,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         image_parameter.image_index = image_index
         image_index++
     }
+    current_image_index = loaded_images.length-1
     params['worldSpace'] = false
     params['coordinate'] = lesion['location_voxel']
     params['smoothDisplay'] = false
@@ -806,3 +809,36 @@ let write_test_volume = (data) => {
 // // canvas.addEventListener('mouseout', this.listenerMouseOut, false);
 // // canvas.addEventListener('mouseleave', this.listenerMouseLeave, false);
 // canvas.addEventListener('mouseup', this.listenerMouseUp, false);
+
+let toggle_image = (n)=> {
+    if(n < 0 || n >= loaded_images.length) {
+        return
+    }
+    checkbox_id = 'checkbox_' + loaded_images[n].file_name
+    checkbox = document.getElementById(checkbox_id)
+    if(checkbox) {
+        checkbox.click()
+    }
+}
+
+document.addEventListener('keyup', (event)=> {
+    let n = parseInt(event.key)
+    if(Number.isInteger(n)) {
+        toggle_image(n)
+    }
+    if(event.key == '*') {
+        toggle_image(loaded_images.length-1)
+    }
+    if(event.key == '-') {
+        while(current_image_index > 0 && papayaContainers[1].viewer.screenVolumes[current_image_index].hidden) {
+            current_image_index--
+        }
+        toggle_image(current_image_index)
+    }
+    if(event.key == '+') {
+        while(current_image_index < loaded_images.length-1 && !papayaContainers[1].viewer.screenVolumes[current_image_index].hidden) {
+            current_image_index++
+        }
+        toggle_image(current_image_index)
+    }
+})
