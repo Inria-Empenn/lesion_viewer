@@ -16,6 +16,7 @@ params['images'] = [];
 let current_lesion_index = 0;
 
 let image_archive = null;
+let image_files = null;
 let task = {};
 let lesions = [];
 let grid = null;
@@ -99,7 +100,12 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     loaded_images = []
     current_image_index = 0
     params = {}
-    params['encodedImages'] = []
+
+    if(image_archive != null) {
+        params['encodedImages'] = []
+    } else {
+        params["files"] = images
+    }
 
     let image_index = 0;
     // let screen_volumes = []
@@ -107,8 +113,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
         let file_name = image_parameter.file_name
         let parameters = image_parameter.parameters
-        let image_name = 'lesion_viewer_' + file_name.replace('/', '_').replace('.nii.gz', '')
-        params['encodedImages'].push(image_name)
+        let image_name = image_archive != null ? 'lesion_viewer_' + file_name.replace('/', '_').replace('.nii.gz', '') : file_name.split('/').at(-1)
+        if(image_archive != null) {
+            params['encodedImages'].push(image_name)
+        }
         window[image_name] = images[image_index]
         loaded_images.push({ name: image_name, file_name: file_name, index: image_index })
         params[image_name] = parameters
@@ -148,7 +156,13 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     description.innerText = `${lesion['name']} - ${lesion_index + 1}/${lesions.length}`
     
     papaya.Container.resetViewer(1, params);
-    params['encodedImages'] = [params['encodedImages'][0]]
+
+    if(image_archive != null) {
+        params['encodedImages'] = [params['encodedImages'][0]]
+    } else {
+        params['files'] = [images[0]]
+    }
+
     params['loadingComplete'] = null
     papaya.Container.resetViewer(0, params);
 
@@ -316,7 +330,6 @@ let load_lesion = (i) => {
 
     let image_descriptions = lesion['images']
 
-    let promises = []
     let image_parameters = []
 
     let need_to_load = false
@@ -340,27 +353,6 @@ let load_lesion = (i) => {
     //     image_descriptions.push(image_descriptions[image_descriptions.length-1])
     // }
 
-    let ni = 0
-    for (let image_description of image_descriptions) {
-        if (ni>=11) {
-            break
-        }
-        ni++
-        let file_name = image_description.file
-        for (let f in image_archive.files) {
-            if (f.split('/').at(-1) == file_name) {
-                file_name = f
-                break
-            }
-        }
-        // let promise_index = -1
-        // if(loaded_images.findIndex((i)=>i.file_name == file_name)<0) {
-        //     promise_index = promises.length
-        // }
-
-        promises.push(image_archive.file(file_name).async('base64'))
-        image_parameters.push({ name: image_description.name, file_name: file_name, parameters: image_description.parameters, display: image_description.display })
-    }
 
     description.innerText = 'loading ' + lesion['name'] + '...'
     
@@ -368,7 +360,29 @@ let load_lesion = (i) => {
     visibility_checkboxes.replaceChildren();
 
     show_loader()
+    let image_names = []
+    let ni = 0
+    for (let image_description of image_descriptions) {
+        if (ni>=11) {
+            break
+        }
+        ni++
+        
+        let file_name = image_archive != null ? Object.keys(image_archive.files).find((f) => f.split('/').at(-1) == image_description.file) : image_description.file
 
+        image_names.push(file_name)
+        image_parameters.push({ name: image_description.name, file_name: file_name, parameters: image_description.parameters, display: image_description.display })
+    }
+
+    if(image_files != null && image_archive == null) {
+        images_to_display = image_names.map((file_name) => { return [...image_files].find((f) => f.name == file_name) })
+        // for all images_to_display which have a size of 0: remove them from images_to_display and image_parameters
+        images_to_display = images_to_display.filter((image) => image.size != 0)
+        image_parameters = image_parameters.filter((parameter) => images_to_display.findIndex((file) => file.name == parameter.file_name) >= 0)
+        load_lesion_viewer(images_to_display, image_parameters, lesion, current_lesion_index)
+        return
+    }
+    let promises = image_names.map((image_name) => { return image_archive.file(image_name).async('base64')} )
     Promise.all(promises).then((images) => load_lesion_viewer(images, image_parameters, lesion, current_lesion_index))
 }
 
@@ -721,6 +735,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
                     console.log('lesions.json not found')
                 }
             })
+    };
+
+    let load_images = document.getElementById('load_images')
+
+    load_images.onchange = function () {
+        if (this.files.length == 0) {
+            return
+        }
+        image_files = this.files
     };
 
     let comment = document.getElementById('comment_value');
