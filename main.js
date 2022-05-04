@@ -118,9 +118,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
             params['encodedImages'].push(image_name)
         }
         window[image_name] = images[image_index]
-        loaded_images.push({ name: image_name, file_name: file_name, index: image_index })
+        let display_name = image_parameter.name || file_name.split('/').at(-1)
+        loaded_images.push({ name: image_name, file_name: file_name, index: image_index, display_name: display_name })
         params[image_name] = parameters
-        create_checkbox(image_parameter.name || file_name.split('/').at(-1), image_index, image_parameter.display)
+        create_checkbox(display_name, image_index, image_parameter.display)
         image_parameter.image_index = image_index
         image_index++
     }
@@ -660,6 +661,13 @@ let set_data_selected_row = (field_name, value)=> {
     }
 }
 
+let toggle_crosshairs = () => {
+    for(let i=0 ; i<2 ; i++) {
+        papayaContainers[i].preferences.showCrosshairs = papayaContainers[i].preferences.showCrosshairs == 'Yes' ? 'No' : 'Yes'
+        papayaContainers[i].viewer.drawViewer()
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function (event) {
     let papaya_container0 = document.getElementById('papaya-container0')
 
@@ -800,12 +808,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     })
 
     let toggle_crosshairs_button = document.getElementById('toggle-crosshairs')
-    toggle_crosshairs_button.addEventListener('click', () => {
-        for(let i=0 ; i<2 ; i++) {
-            papayaContainers[i].preferences.showCrosshairs = papayaContainers[i].preferences.showCrosshairs == 'Yes' ? 'No' : 'Yes'
-            papayaContainers[i].viewer.drawViewer()
-        }
-    })
+    toggle_crosshairs_button.addEventListener('click', toggle_crosshairs)
 });
 
 // Draw test
@@ -854,7 +857,7 @@ let toggle_image = (n)=> {
     if(n < 0 || n >= loaded_images.length) {
         return
     }
-    checkbox_id = 'checkbox_' + loaded_images[n].file_name
+    checkbox_id = 'checkbox_' + loaded_images[n].display_name
     checkbox = document.getElementById(checkbox_id)
     if(checkbox) {
         checkbox.click()
@@ -880,5 +883,8 @@ document.addEventListener('keyup', (event)=> {
             current_image_index++
         }
         toggle_image(current_image_index)
+    }
+    if(event.key == 'c') {
+        toggle_crosshairs()
     }
 })
