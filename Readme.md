@@ -17,6 +17,8 @@ For that you must have an image archive or folder, and a task description file. 
 
 ### User interfaces
 
+![Lesion Viewer Screenshot](LesionViewer.png)
+
 The mouse enables to navigate in the image (click and drag on the different slices), as the arrow keys and the Page Up / Page Down keys.
 
 To zoom in and out, click and drag up or down with the ALT key pressed.
@@ -68,9 +70,9 @@ Papaya shortcuts (help menu > show keyboard reference):
 
 ### Create a task file to view a database
 
-The `create_lesions_list.py` script is an example to create a json task file.
+The `create_lesions_list.py` script in this repository is an example to create a json task file.
 
-A task file is a json with the following fields:
+A task file has the following structure:
 
 ```
 {
