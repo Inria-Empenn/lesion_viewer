@@ -252,10 +252,13 @@ let lesion_location_to_voxel_coordinates = (loc) => {
     let xDim = papayaContainers[0].viewer.volume.getXDim() - 1
     let yDim = papayaContainers[0].viewer.volume.getYDim() - 1
     let zDim = papayaContainers[0].viewer.volume.getZDim() - 1
-    let invertX = orientation[3] == '-'
-    let invertY = orientation[4] == '+'
-    let invertZ = orientation[5] == '+'
-    return [invertX ? xDim - loc[0] : loc[0], invertY ? yDim - loc[1] : loc[1], invertZ ? zDim - loc[2] : loc[2]]
+    let xIndex = orientation.indexOf('X')
+    let yIndex = orientation.indexOf('Y')
+    let zIndex = orientation.indexOf('Z')
+    let invertX = orientation[3+xIndex] == '-'
+    let invertY = orientation[3+yIndex] == '+'
+    let invertZ = orientation[3+zIndex] == '+'
+    return [invertX ? xDim - loc[xIndex] : loc[xIndex], invertY ? yDim - loc[yIndex] : loc[yIndex], invertZ ? zDim - loc[zIndex] : loc[zIndex]]
 }
 
 let go_to_lesion = (lesion) => {
