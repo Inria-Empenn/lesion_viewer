@@ -27,9 +27,13 @@
 	<!-- <script src='https://cdn.plot.ly/plotly-2.4.2.min.js'></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/danfojs@0.3.3/lib/bundle.min.js"></script> -->
 
-    <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css">
-    <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-theme-alpine.css">
+    <!-- <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script> -->
+    <!-- <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css"> -->
+    <!-- <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-theme-alpine.css"> -->
+    
+    <script src="libs/agGrid/ag-grid-community.min.noStyle.js"></script>
+    <link rel="stylesheet" href="libs/agGrid/ag-grid.css">
+    <link rel="stylesheet" href="libs/agGrid/ag-theme-alpine.css">
 
 
     <!-- JS debug start -->
@@ -103,8 +107,25 @@
     <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script> -->
 
     <!-- JS debug end-->
+<!-- 
+    <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+    <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+    
+    <py-env>
+    - numpy
+    - SimpleITK==2.2.0
+    </py-env> -->
 
     <script type="text/javascript" src="main.js"></script>
+    
+    <!-- <py-script>
+        import numpy as np
+        import SimpleITK as sitk
+
+        viewer_container = document.getElementById('viewer-container')
+        # listen watershed image event
+        # viewer_container.addEventListener('watershed-image', function(e) {
+    </py-script> -->
 
     <title>Lesion Viewer</title>
 </head>
