@@ -16,6 +16,7 @@ params['images'] = [];
 let current_lesion_index = 0;
 
 let image_archive = null;
+let images_url = null;
 let image_files = null;
 let task = {};
 let lesions = [];
@@ -103,8 +104,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
     if(image_archive != null) {
         params['encodedImages'] = []
+    } else if(images_url != null) {
+        params['images'] = images.map((name)=> images_url + name )
     } else {
-        params["files"] = images
+        params['files'] = images
     }
 
     let image_index = 0;
@@ -160,6 +163,8 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
     if(image_archive != null) {
         params['encodedImages'] = [params['encodedImages'][0]]
+    } else if(images_url != null) {
+        params['images'] = [params['images'][0]]
     } else {
         params['files'] = [images[0]]
     }
@@ -377,7 +382,10 @@ let load_lesion = (i) => {
         image_names.push(file_name)
         image_parameters.push({ name: image_description.name, file_name: file_name, parameters: image_description.parameters, display: image_description.display })
     }
-
+    if(images_url != null) {
+        load_lesion_viewer(image_names, image_parameters, lesion, current_lesion_index)
+        return
+    }
     if(image_files != null && image_archive == null) {
         images_to_display = image_names.map((file_name) => { return [...image_files].find((f) => f.name == file_name) })
         // for all images_to_display which have a size of 0: remove them from images_to_display and image_parameters
@@ -571,8 +579,7 @@ let load_lesions = (l) => {
     }
 }
 
-let load_task = (file) => {
-    let task_json = JSON.parse(file)
+let load_task = (task_json) => {
     if (task_json instanceof Array) {
         task.lesions = task_json
         load_lesions(task_json)
@@ -671,6 +678,18 @@ let toggle_crosshairs = () => {
     }
 }
 
+async function loadFilesFromServer() {
+    const response = await fetch("/nnunet_predictions/lesions_arthur_comments.json");
+
+    try {
+        const json = await response.json();
+        images_url = '/nnunet_predictions/'
+        load_task(json)
+    } catch (e) {
+        console.log(e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function (event) {
     let papaya_container0 = document.getElementById('papaya-container0')
 
@@ -719,7 +738,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
         let file = this.files[0]
         let file_reader = new FileReader();
-        file_reader.onload = (event) => load_task(event.target.result)
+        file_reader.onload = (event) => load_task(JSON.parse(event.target.result))
         file_reader.readAsText(file, 'UTF-8')
     }
 
@@ -741,7 +760,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
             }).then(function (result) {
                 if (result) {
-                    load_task(result)
+                    load_task(JSON.parse(result))
                 } else {
                     console.log('lesions.json not found')
                 }
@@ -756,6 +775,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
         image_files = this.files
     };
+
+    
 
     let comment = document.getElementById('comment_value');
     comment.addEventListener('change', () => {
@@ -812,6 +833,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     let toggle_crosshairs_button = document.getElementById('toggle-crosshairs')
     toggle_crosshairs_button.addEventListener('click', toggle_crosshairs)
+
+    loadFilesFromServer();
 });
 
 // Draw test
