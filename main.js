@@ -70,6 +70,54 @@ let create_checkbox = (name, image_index, visible) => {
     })
 }
 
+let create_slider = (name, image_index, visible) => {
+    let container = document.getElementById('toggle-visibility-buttons')
+
+    {/* <div>
+        <label for='checkbox_name'>name</label>
+        <input type='checkbox' name='name' id='checkbox_name'>
+    </div> */}
+
+    let div = document.createElement('div');
+    div.classList.add('checkbox')
+    let label = document.createElement('label');
+    label.setAttribute('for', 'slider_' + name)
+    label.innerText = 'Threshold'
+    let input = document.createElement('input');
+    input.setAttribute('type', 'range')
+    input.setAttribute('id', 'slider_' + name)
+    input.setAttribute('min', 0)
+    input.setAttribute('max', 1)
+    input.setAttribute('step', 0.01)
+    input.setAttribute('class', 'slider')
+    input.setAttribute('name', name)
+    input.disabled = true
+    value_label = document.createElement('label');
+    value_label.setAttribute('id', 'slider_label_' + name)
+    value_label.innerText = ''
+    div.appendChild(label)
+    div.appendChild(input)
+    div.appendChild(value_label)
+    container.appendChild(div);
+
+    input.addEventListener('change', (event) => {
+        if(input.value < 0.01) {
+            papayaContainers[1].viewer.screenVolumes[image_index].updateMinLUT(0);
+            papayaContainers[1].viewer.screenVolumes[image_index].updateMaxLUT(1);
+        }
+        value = parseFloat(event.target.value);
+        papayaContainers[1].viewer.screenVolumes[image_index].updateMinLUT(value*papaya.viewer.ColorTable.LUT_MAX);
+        papayaContainers[1].viewer.screenVolumes[image_index].updateMaxLUT(value*papaya.viewer.ColorTable.LUT_MAX);
+        papayaContainers[1].viewer.screenVolumes[image_index].updateColorBar();
+        papayaContainers[1].viewer.screenVolumes[image_index].setScreenRange(value, value);
+        papayaContainers[1].viewer.drawViewer(true, false);
+        let value_label = document.getElementById(event.target.id.replace('slider', 'slider_label'))
+        value_label.innerText = value
+        // papaya.Container.hideImage(1, image_index)
+        // papaya.Container.showImage(1, image_index)
+    })
+}
+
 let create_toggle_button = (button_name, image_index, visible) => {
     let container = document.getElementById('toggle-visibility-buttons')
     let toggle_button = document.createElement('button');
@@ -123,8 +171,12 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         window[image_name] = images[image_index]
         let display_name = image_parameter.name || file_name.split('/').at(-1)
         loaded_images.push({ name: image_name, file_name: file_name, index: image_index, display_name: display_name })
+
         params[image_name] = parameters
         create_checkbox(display_name, image_index, image_parameter.display)
+        if(image_parameter.threshold_slider) {
+            create_slider(display_name, image_index, image_parameter.display)
+        }
         image_parameter.image_index = image_index
         image_index++
     }
@@ -154,6 +206,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         // }
         // segmentation_data = data
         // papayaContainers[0].viewer.drawViewer(true, false);
+        
     }
 
     let description = document.getElementById('description')
