@@ -63,6 +63,11 @@ button, textarea, label, input, #description {
     flex-direction: column-reverse;
 }
 
+#toggle-visibility-buttons > .slider {
+    display: flex;
+    flex-direction: row;
+}
+
 #toolbox {
     width: 250px;
 }
@@ -91,4 +96,9 @@ button, textarea, label, input, #description {
 
 .ag-theme-alpine .ag-ltr .ag-has-focus .ag-cell-focus:focus {
     border: none;
+}
+
+.flex-wrap {
+    display: flex;
+    flex-wrap: wrap;
 }

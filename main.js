@@ -34,7 +34,29 @@ let hide_loader = () => {
     loader.classList.add('hide')
 }
 
-let create_checkbox = (name, image_index, visible) => {
+let update_best_segmentation = ()=> {
+    let container = document.getElementById('toggle-visibility-buttons')
+    let checkboxes = container.querySelectorAll('input[type="checkbox"]')
+    let best_segmentation_string = ''
+    for(let checkbox of checkboxes) {
+        if(checkbox.checked) {
+            let checkbox_id = checkbox.id
+            let name = checkbox_id.replace('checkbox_', '')
+            if(name == 't2_time01') {
+                continue
+            }
+            let slider = document.getElementById('slider_'+name)
+            let plus_prefix = best_segmentation_string.length > 0 ? ' + ' : ''
+            best_segmentation_string += plus_prefix + name + (slider ? '_' + slider.value : '')
+        }
+    }
+    let best_segmentation_label = document.getElementById('best_segmentation_value')
+    best_segmentation_label.textContent = best_segmentation_string
+    lesions[current_lesion_index]['best_segmentation'] = best_segmentation_string
+    save_to_local_storage()
+}
+
+let create_checkbox = (name, image_index, visible, exclusive_button) => {
     let container = document.getElementById('toggle-visibility-buttons')
 
     {/* <div>
@@ -49,11 +71,42 @@ let create_checkbox = (name, image_index, visible) => {
     label.innerText = name
     let input = document.createElement('input');
     input.setAttribute('type', 'checkbox')
+    input.setAttribute('data-index', image_index)
     input.setAttribute('id', 'checkbox_' + name)
     input.setAttribute('name', name)
     input.checked = visible
     input.disabled = true
     div.appendChild(input)
+    if(exclusive_button) {
+        let exclusive_input = document.createElement('input');
+        exclusive_input.setAttribute('type', 'button')
+        exclusive_input.setAttribute('id', 'exculsive_checkbox_' + name)
+        exclusive_input.setAttribute('name', name)
+        exclusive_input.setAttribute('value', 'only')
+        exclusive_input.checked = false
+        div.appendChild(exclusive_input)
+        exclusive_input.addEventListener('mousedown', (event) => {
+            for(let i=0 ; i<papayaContainers[1].viewer.screenVolumes.length ; i++) {
+                papaya.Container.hideImage(1, i)
+            }
+            if(image_index < papayaContainers[1].viewer.screenVolumes.length || papayaContainers[1].viewer.loadingVolume != null) {
+                papaya.Container.showImage(1, image_index)
+            }
+        })
+        exclusive_input.addEventListener('mouseup', (event) => {
+            for(let i=0 ; i<papayaContainers[1].viewer.screenVolumes.length ; i++) {
+                let checkbox = document.querySelector('input[type="checkbox"][data-index="'+i+'"]')
+                if(checkbox.checked) {
+                    papaya.Container.showImage(1, i)
+                } else {
+                    papaya.Container.hideImage(1, i)
+                }
+            }
+            event.preventDefault()
+            event.stopPropagation()
+            return -1
+        })
+    }
     div.appendChild(label)
     container.appendChild(div);
 
@@ -67,6 +120,9 @@ let create_checkbox = (name, image_index, visible) => {
                 papaya.Container.hideImage(1, image_index)
             }
         }
+        if(task.fields.findIndex((e)=>e.field=='best_segmentation')>=0) {
+            update_best_segmentation()
+        }
     })
 }
 
@@ -79,10 +135,10 @@ let create_slider = (name, image_index, visible) => {
     </div> */}
 
     let div = document.createElement('div');
-    div.classList.add('checkbox')
+    div.classList.add('slider')
     let label = document.createElement('label');
-    label.setAttribute('for', 'slider_' + name)
-    label.innerText = 'Threshold'
+    // label.setAttribute('for', 'slider_' + name)
+    // label.innerText = 'Threshold'
     let input = document.createElement('input');
     input.setAttribute('type', 'range')
     input.setAttribute('id', 'slider_' + name)
@@ -95,26 +151,31 @@ let create_slider = (name, image_index, visible) => {
     value_label = document.createElement('label');
     value_label.setAttribute('id', 'slider_label_' + name)
     value_label.innerText = ''
-    div.appendChild(label)
+    // div.appendChild(label)
     div.appendChild(input)
     div.appendChild(value_label)
     container.appendChild(div);
 
     input.addEventListener('change', (event) => {
-        if(input.value < 0.01) {
-            papayaContainers[1].viewer.screenVolumes[image_index].updateMinLUT(0);
-            papayaContainers[1].viewer.screenVolumes[image_index].updateMaxLUT(1);
-        }
-        value = parseFloat(event.target.value);
-        papayaContainers[1].viewer.screenVolumes[image_index].updateMinLUT(value*papaya.viewer.ColorTable.LUT_MAX);
-        papayaContainers[1].viewer.screenVolumes[image_index].updateMaxLUT(value*papaya.viewer.ColorTable.LUT_MAX);
+        let value = parseFloat(event.target.value)
+        let min = input.value > 0.01 ? value : 0
+        let max = input.value > 0.01 ? value : 1
+        papayaContainers[1].viewer.screenVolumes[image_index].updateMinLUT(min*papaya.viewer.ColorTable.LUT_MAX);
+        papayaContainers[1].viewer.screenVolumes[image_index].updateMaxLUT(max*papaya.viewer.ColorTable.LUT_MAX);
         papayaContainers[1].viewer.screenVolumes[image_index].updateColorBar();
-        papayaContainers[1].viewer.screenVolumes[image_index].setScreenRange(value, value);
+        papayaContainers[1].viewer.screenVolumes[image_index].setScreenRange(min, max);
         papayaContainers[1].viewer.drawViewer(true, false);
-        let value_label = document.getElementById(event.target.id.replace('slider', 'slider_label'))
+        let name = event.target.id.replace('slider_', '')
+        let value_label = document.getElementById('slider_label_'+name)
         value_label.innerText = value
         // papaya.Container.hideImage(1, image_index)
         // papaya.Container.showImage(1, image_index)
+
+        let checkbox = document.getElementById('checkbox_'+name)
+        checkbox.checked = true
+        checkbox.dispatchEvent(new Event('change'))
+
+        update_best_segmentation()
     })
 }
 
@@ -173,10 +234,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         loaded_images.push({ name: image_name, file_name: file_name, index: image_index, display_name: display_name })
 
         params[image_name] = parameters
-        create_checkbox(display_name, image_index, image_parameter.display)
         if(image_parameter.threshold_slider) {
             create_slider(display_name, image_index, image_parameter.display)
         }
+        create_checkbox(display_name, image_index, image_parameter.display, image_parameter.exclusive_button)
         image_parameter.image_index = image_index
         image_index++
     }
@@ -355,6 +416,7 @@ let load_lesion = (i) => {
         for (let field of task.fields) {
             let field_name = field.field || field.name
             let field_container = document.createElement('div')
+            field_container.classList.add('flex-wrap')
             let fiel_label = document.createElement('label')
             fiel_label.innerText = capitalize_first_letter(field_name) + ':'
             let field_span = null
@@ -433,7 +495,13 @@ let load_lesion = (i) => {
         let file_name = image_archive != null ? Object.keys(image_archive.files).find((f) => f.split('/').at(-1) == image_description.file) : image_description.file
 
         image_names.push(file_name)
-        image_parameters.push({ name: image_description.name, file_name: file_name, parameters: image_description.parameters, display: image_description.display })
+        image_parameters.push({ name: image_description.name, 
+            file_name: file_name, 
+            parameters: image_description.parameters, 
+            display: image_description.display, 
+            threshold_slider: image_description.threshold_slider,
+            exclusive_button: image_description.exclusive_button
+        })
     }
     if(images_url != null) {
         load_lesion_viewer(image_names, image_parameters, lesion, current_lesion_index)
@@ -515,7 +583,7 @@ let create_table = () => {
                 element.checked = lesion[field_name]
                 element.indeterminate = false
             }
-            save_in_local_storage()
+            save_to_local_storage()
         }
         // columnTypes: { numberColumn: { width: 100, filter: 'agNumberColumnFilter' } }
     };
@@ -662,7 +730,7 @@ CheckboxRenderer.prototype.checkedHandler = function (e) {
     // let lesion_index = lesions.findIndex((lesion) => lesion.name == this.params.data.name)
     // let lesion = lesions[lesion_index]
     // lesion[colId] = checked
-    // save_in_local_storage()
+    // save_to_local_storage()
     // let checkbox_element = document.getElementById(colId + '_value')
     // checkbox_element.value = checked
     // checkbox_element.indeterminate = false
@@ -677,7 +745,7 @@ CheckboxRenderer.prototype.destroy = function (params) {
     this.eGui.removeEventListener('click', this.checkedHandler);
 }
 
-let save_in_local_storage = ()=> {
+let save_to_local_storage = ()=> {
     if(lesions == null) {
         return
     }
