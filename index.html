@@ -3,6 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 
 <head>
+    <base href="lesion_viewer/">
     <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
@@ -23,21 +24,21 @@
 
     <!-- <script type="text/javascript" src="libs/Papaya/release/current/standard/papaya.js"></script> -->
     <script type="text/javascript" src="libs/papaya.js"></script>
-    
-	<!-- <script src='https://cdn.plot.ly/plotly-2.4.2.min.js'></script> -->
+
+    <!-- <script src='https://cdn.plot.ly/plotly-2.4.2.min.js'></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/danfojs@0.3.3/lib/bundle.min.js"></script> -->
 
     <!-- <script src="https://unpkg.com/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script> -->
     <!-- <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-grid.css"> -->
     <!-- <link rel="stylesheet" href="https://unpkg.com/ag-grid-community/dist/styles/ag-theme-alpine.css"> -->
-    
+
     <script src="libs/agGrid/ag-grid-community.min.noStyle.js"></script>
     <link rel="stylesheet" href="libs/agGrid/ag-grid.css">
     <link rel="stylesheet" href="libs/agGrid/ag-theme-alpine.css">
 
 
     <!-- JS debug start -->
-<!-- 
+    <!-- 
     <script type="text/javascript" src="libs/Papaya/src/js/data/sample-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas-image.js"></script>
     <script type="text/javascript" src="libs/Papaya/src/js/data/talairach-atlas.js"></script>
@@ -107,7 +108,7 @@
     <script type="text/javascript" src="libs/Papaya/src/js/main.js"></script> -->
 
     <!-- JS debug end-->
-<!-- 
+    <!-- 
     <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
     <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
     
@@ -117,7 +118,10 @@
     </py-env> -->
 
     <script type="text/javascript" src="main.js"></script>
-    
+
+    <!-- <script src="http://127.0.0.1/shared/jquery.js" type="text/javascript"></script>
+    <script src="http://127.0.0.1/shared/shiny.js" type="text/javascript"></script>
+    <link rel="stylesheet" type="text/css" href="http://127.0.0.1/shared/shiny.css"/> -->
     <!-- <py-script>
         import numpy as np
         import SimpleITK as sitk
@@ -130,88 +134,94 @@
     <title>Lesion Viewer</title>
 </head>
 
-<body>
+<body id="lesion-viewer-body">
 
-    <div id="viewer-container" class="hide">
-        
-        <div id="papaya-toolbox-container">
-            
-            <div id="papaya-containers" class="row">
+    <div id="lesion-viewer-container">
 
-                <div id="papaya-container0">
-                    <div class="papaya"></div>
-                </div>
-                <div id="papaya-container1">
-                    <div class="papaya"></div>
-                </div>
-    
-            </div>
+        <div id="viewer-container" class="hide">
 
-            <div id="toolbox">
-    
-                <button id="side-by-side">Toggle side by side</button>
+            <div id="papaya-toolbox-container">
 
-                <div id="toggle-visibility-buttons">
-                </div>
-                <button id="go-to-lesion">Go to current lesion</button>
-                <button id="toggle-crosshairs">Toggle Crosshairs</button>
-        
-                
-                <div id="info">
-                    <div id="description"></div>
+                <div id="papaya-containers" class="row">
 
-                    <div id="fields"></div>
-                    
-                    <div class="validation checkbox">
-                        <label for="valid_value">Valid</label>
-                        <input type="checkbox" name="valid" id="valid_value">
+                    <div id="papaya-container0">
+                        <div class="papaya"></div>
+                    </div>
+                    <div id="papaya-container1">
+                        <div class="papaya"></div>
                     </div>
 
-                    <div class="comment-container">
-                        <label for="comment_value">Comment</label>
-                        <textarea type="text" id="comment_value"></textarea>
-                    </div>
-                    
                 </div>
 
-                <div class="navigation">
-                    <button id="prev">&#60; Prev</button> <button id="next">Next &#62;</button>
+                <div id="toolbox">
+
+                    <button id="side-by-side">Toggle side by side</button>
+
+                    <div id="toggle-visibility-buttons">
+                    </div>
+                    <button id="go-to-lesion">Go to current lesion</button>
+                    <button id="toggle-crosshairs">Toggle Crosshairs</button>
+
+
+                    <div id="info">
+                        <div id="description"></div>
+
+                        <div id="fields"></div>
+
+                        <div class="validation checkbox">
+                            <label for="valid_value">Valid</label>
+                            <input type="checkbox" name="valid" id="valid_value">
+                        </div>
+
+                        <div class="comment-container">
+                            <label for="comment_value">Comment</label>
+                            <textarea type="text" id="comment_value"></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="navigation">
+                        <button id="prev">&#60; Prev</button> <button id="next">Next &#62;</button>
+                    </div>
+
+                    <button id="save">Save</button>
+
                 </div>
-                
-                <button id="save">Save</button>
+
 
             </div>
-            
-            
-        </div>
-        
-        <div id="plot_div" class="ag-theme-alpine" style="height: 600px; width:100%;"></div>
 
-    </div>
+            <div id="plot_div" class="ag-theme-alpine" style="height: 600px; width:100%;"></div>
 
-    <div id='load buttons'>
-        <div>
-            <label for="load_images_archive">Open images archive:</label> <input type=file id="load_images_archive" accept="application/zip" onclick="this.value=null;">
-            or
-            <label for="load_images">Open images:</label> <input type=file multiple id="load_images" accept="application/gzip" onclick="this.value=null;">
         </div>
 
-        <!-- <div><label for="load_lesions_data">Open lesions data:</label> <input type=file id="load_lesions_data" accept="text/csv"></div> -->
-        <div><label for="load_task_description">Open task description:</label> <input type=file id="load_task_description" onclick="this.value=null;"></div>
-    </div>
+        <div id='load buttons'>
+            <div>
+                <label for="load_images_archive">Open images archive:</label> <input type=file id="load_images_archive"
+                    accept="application/zip" onclick="this.value=null;">
+                or
+                <label for="load_images">Open images:</label> <input type=file multiple id="load_images"
+                    accept="application/gzip" onclick="this.value=null;">
+            </div>
 
-    <div id="loader" class="hide">
+            <!-- <div><label for="load_lesions_data">Open lesions data:</label> <input type=file id="load_lesions_data" accept="text/csv"></div> -->
+            <div><label for="load_task_description">Open task description:</label> <input type=file
+                    id="load_task_description" onclick="this.value=null;"></div>
+        </div>
 
-        <svg version="1.1" id="L3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-            x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 0 0" xml:space="preserve">
-            <circle fill="none" stroke="#fff" stroke-width="4" cx="50" cy="50" r="44" style="opacity:0.5;" />
-            <circle fill="none" stroke="#fff" stroke-width="3" cx="8" cy="54" r="6">
-                <animateTransform attributeName="transform" dur="2s" type="rotate" from="0 50 48" to="360 50 52"
-                    repeatCount="indefinite" />
+        <div id="loader" class="hide">
 
-            </circle>
-        </svg>
+            <svg version="1.1" id="L3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+                x="0px" y="0px" viewBox="0 0 100 100" enable-background="new 0 0 0 0" xml:space="preserve">
+                <circle fill="none" stroke="#fff" stroke-width="4" cx="50" cy="50" r="44" style="opacity:0.5;" />
+                <circle fill="none" stroke="#fff" stroke-width="3" cx="8" cy="54" r="6">
+                    <animateTransform attributeName="transform" dur="2s" type="rotate" from="0 50 48" to="360 50 52"
+                        repeatCount="indefinite" />
 
+                </circle>
+            </svg>
+
+        </div>
     </div>
 
 </body>

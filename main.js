@@ -624,12 +624,20 @@ CheckboxRenderer.prototype.destroy = function (params) {
     this.eGui.removeEventListener('click', this.checkedHandler);
 }
 
+let shiny_is_defined = ()=> {
+    return typeof Shiny !== 'undefined'
+}
+
 let save_in_local_storage = ()=> {
     if(lesions == null) {
         return
     }
     let lesions_string = JSON.stringify(lesions)
     localStorage.setItem(task != null && task.name ? task.name : 'lesions', lesions_string)
+
+    if(shiny_is_defined()) {
+        Shiny.onInputChange("lesions", lesions_string);
+    }
 }
 
 let load_from_local_storage = ()=> {
@@ -691,6 +699,36 @@ async function loadFilesFromServer() {
 }
 
 document.addEventListener('DOMContentLoaded', function (event) {
+    
+    let body = document.querySelector('body')
+    if(body.firstChild.nodeType == document.TEXT_NODE && body.firstChild.textContent.indexOf('{{ base_href }}') >= 0) {
+        body.firstChild.remove()
+    }
+
+    let lesion_viewer_container = document.getElementById('lesion-viewer-container')
+    
+    const attrObserver = new MutationObserver((mutations) => {
+        mutations.forEach(mu => {
+            if (mu.type !== "attributes" && mu.attributeName !== "class") return;
+            if(!mu.target.classList.contains('hide')){
+                resize_viewer();
+            }
+        });
+    });
+    attrObserver.observe(lesion_viewer_container, {attributes: true})
+      
+    if(shiny_is_defined()) {
+        lesion_viewer_container.classList.add('hide')
+        console.log(lesion_viewer_container, lesion_viewer_container.classList)
+
+        let close_button = document.createElement('button')
+        close_button.innerText = 'Close lesion viewer'
+        close_button.addEventListener('click', (event)=>{
+            lesion_viewer_container.classList.add('hide')
+        })
+        lesion_viewer_container.appendChild(close_button)
+    }
+
     let papaya_container0 = document.getElementById('papaya-container0')
 
     let side_by_side = localStorage.getItem('side-by-side')
@@ -701,6 +739,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
 
     resize_viewer()
+    
 
     for(let i=0 ; i<2 ; i++) {
         let papaya_container = document.getElementById('papaya-container' + i)
@@ -718,6 +757,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
         localStorage.setItem('side-by-side', !papaya_container0.classList.contains('hide'))
         resize_viewer()
+    })
+
+    $('a[data-value="Lesion viewer"]').click((event)=> {
+        setTimeout(()=>resize_viewer(), 500)
     })
 
     // let load_lesions_data = document.getElementById('load_lesions_data')
