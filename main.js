@@ -749,7 +749,7 @@ let shiny_is_defined = ()=> {
     return typeof Shiny !== 'undefined'
 }
 
-let save_in_local_storage = ()=> {
+let save_to_local_storage = ()=> {
     if(lesions == null) {
         return
     }
