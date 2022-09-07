@@ -3,9 +3,8 @@ from pathlib import Path
 Path.ls = lambda x: list(x.iterdir())
 import SimpleITK as sitk
 
-music_flair_testing_raw = Path('/data/msStudy/datasets/musicFlairTesting/raw/')
 music_flair_testing = Path('/data/amasson/datasets/musicFlairTesting/')
-
+music_flair_testing_raw = music_flair_testing / 'raw'
 # music_flair_testing_archive will contain all images required for the task (can contain more images)
 music_flair_testing_archive = music_flair_testing / 'all'
 
