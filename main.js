@@ -847,6 +847,7 @@ window.onmessage = function(event) {
         resize_viewer()
     }
     if (event.data.task != null) {
+        images_url = '/nnunet_predictions/'
         load_task(event.data.task)
     }
 };
@@ -1024,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     let toggle_crosshairs_button = document.getElementById('toggle-crosshairs')
     toggle_crosshairs_button.addEventListener('click', toggle_crosshairs)
 
-    loadFilesFromServer();
+    // loadFilesFromServer();
 });
 
 // Draw test
