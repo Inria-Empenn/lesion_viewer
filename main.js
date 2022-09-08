@@ -759,7 +759,13 @@ let save_to_local_storage = ()=> {
     if(shiny_is_defined()) {
         Shiny.onInputChange("lesions", lesions_string);
     }
+
+    if(window.parent != null) {
+        window.parent.postMessage({task: lesions_string})
+    }
 }
+
+
 
 let load_from_local_storage = ()=> {
     let lesions_string = localStorage.getItem(task != null && task.name ? task.name : 'lesions')
@@ -819,6 +825,32 @@ async function loadFilesFromServer() {
     }
 }
 
+let add_close_button = ()=> {
+    let close_button = document.getElementById('close_lesion_viewer')
+    if(close_button != null) {
+        return
+    }
+    close_button = document.createElement('button')
+    close_button.innerText = 'x' //'Close lesion viewer'
+    close_button.id = 'close_lesion_viewer'
+    
+    close_button.addEventListener('click', (event)=>{
+        window.parent.postMessage({action: 'hide'})
+    })
+    let toolbox = document.getElementById('toolbox')
+    toolbox.insertBefore(close_button, toolbox.firstChild)
+}
+
+window.onmessage = function(event) {
+    if (event.data.action != null && event.data.action == 'show') {
+        add_close_button()
+        resize_viewer()
+    }
+    if (event.data.task != null) {
+        load_task(event.data.task)
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function (event) {
     
     let body = document.querySelector('body')
@@ -841,13 +873,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     if(shiny_is_defined()) {
         lesion_viewer_container.classList.add('hide')
         console.log(lesion_viewer_container, lesion_viewer_container.classList)
-
-        let close_button = document.createElement('button')
-        close_button.innerText = 'Close lesion viewer'
-        close_button.addEventListener('click', (event)=>{
-            lesion_viewer_container.classList.add('hide')
-        })
-        lesion_viewer_container.appendChild(close_button)
+        add_close_button()
     }
 
     let papaya_container0 = document.getElementById('papaya-container0')
