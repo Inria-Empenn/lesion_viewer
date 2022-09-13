@@ -76,7 +76,6 @@ A task file has the following structure:
 
 ```
 {
-	{
 	"lesions": [
 		{
 			"name": "8099YL-GMMZZO-0417OF-RMMMVC_5", 										# The lesion name
@@ -138,7 +137,7 @@ A task file has the following structure:
 		}
 	]
 }
-}
+
 
 ```
 
