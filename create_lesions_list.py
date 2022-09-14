@@ -1,18 +1,35 @@
+import sys
 import json
+import argparse
 from pathlib import Path
 Path.ls = lambda x: list(x.iterdir())
 import SimpleITK as sitk
 
-music_flair_testing = Path('/data/amasson/datasets/musicFlairTesting/')
-music_flair_testing_raw = music_flair_testing / 'raw'
-# music_flair_testing_archive will contain all images required for the task (can contain more images)
-music_flair_testing_archive = music_flair_testing / 'all'
+parser = argparse.ArgumentParser(description='Create the task file to view lesions in the viewer. Modify the code to fit your needs.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('-gt', '--ground_truth', help='The folder containing the ground truth images. Must contain patient / time02 / segmentations-brain / groundTruth-new.nii.gz images.', required=True)
+parser.add_argument('-t', '--task_folder', help='The folder which will contain the task file (task.json) and all the images required by the viewer.', required=True)
+args = parser.parse_args()
+
+
+task_path = Path(args.task)
+ground_truth_folder = Path(args.ground_truth)
+
+if not ground_truth_folder.exists():
+	sys.exit(f'Path {ground_truth_folder} does not exist.')
+
+task_folder = Path(args.task_folder)
+task_folder.mkdir(exist_ok=True, parents=True)
+
+# music_flair_testing = Path('/data/amasson/datasets/musicFlairTesting/')
+# music_flair_testing_raw = music_flair_testing / 'raw'
+# # music_flair_testing_archive will contain all images required for the task (can contain more images)
+# music_flair_testing_archive = music_flair_testing / 'all'
 
 # Initialize the fields which will be displayed on the table of the viewer
 # Here there are two checkboxes "new" and "growing"
 fields = [
-    { 'field': 'new', 'sortable': True, 'resizable': True, 'filter': True, 'editable': True, 'longiseg_type': 'bool' },
-    { 'field': 'growing', 'sortable': True, 'resizable': True, 'filter': True, 'editable': True, 'longiseg_type': 'bool' },
+    { 'field': 'new', 'sortable': True, 'resizable': True, 'filter': True, 'editable': True, 'lv_type': 'bool' },
+    { 'field': 'growing', 'sortable': True, 'resizable': True, 'filter': True, 'editable': True, 'lv_type': 'bool' },
 ]
 
 # This is the task
@@ -22,11 +39,13 @@ def get_bounding_box_center(bounding_box):
     return [ (bounding_box[0] + bounding_box[1]) // 2, (bounding_box[2] + bounding_box[3]) // 2, (bounding_box[4] + bounding_box[5]) // 2 ]
 
 # For all patients: extract the lesions and add them to the task
-for patient in music_flair_testing_raw.iterdir():
+# for patient in music_flair_testing_raw.iterdir():
+for patient in ground_truth_folder.iterdir():
     print(patient.name)
 	
 	# Load and threshold the ground truth
-    ground_truth_path = music_flair_testing_archive / f'{patient.name}_mGT.nii.gz'
+    # ground_truth_path = music_flair_testing_archive / f'{patient.name}_mGT.nii.gz'
+    ground_truth_path = patient / 'time02' / 'segmentations-brain' / 'groundTruth-new.nii.gz'
     segmentation_image = sitk.ReadImage(str(ground_truth_path), sitk.sitkFloat64)
     thresholded_segmentation = sitk.BinaryThreshold(segmentation_image, 0.5)
 	
@@ -75,9 +94,10 @@ for patient in music_flair_testing_raw.iterdir():
         })
 	
 	# Save the labeled image to use it for later processes
-    sitk.WriteImage(labeled, str(music_flair_testing_archive / f'{patient.name}_gt_labeled.nii.gz'))
+    # sitk.WriteImage(labeled, str(music_flair_testing_archive / f'{patient.name}_gt_labeled.nii.gz'))
+    sitk.WriteImage(labeled, str(task_folder / f'{patient.name}_gt_labeled.nii.gz'))
 
 # Save the task	
-with open(str(music_flair_testing_archive / 'task.json'), 'w') as f:
+with open(str(task_folder / 'task.json'), 'w') as f:
     json.dump(task, f, indent=4)
 

@@ -21,7 +21,6 @@ let image_files = null;
 let task = {};
 let lesions = [];
 let grid = null;
-let initialized = false;
 let segmentation_data = null;
 
 let show_loader = () => {
@@ -35,6 +34,9 @@ let hide_loader = () => {
 }
 
 let update_best_segmentation = ()=> {
+    if(task.fields == null || task.fields.findIndex((e)=>e.field=='best_segmentation')<0) {
+        return
+    }
     let container = document.getElementById('toggle-visibility-buttons')
     let checkboxes = container.querySelectorAll('input[type="checkbox"]')
     let best_segmentation_string = ''
@@ -47,12 +49,13 @@ let update_best_segmentation = ()=> {
             }
             let slider = document.getElementById('slider_'+name)
             let plus_prefix = best_segmentation_string.length > 0 ? ' + ' : ''
-            best_segmentation_string += plus_prefix + name + (slider ? '_' + slider.value : '')
+            best_segmentation_string += plus_prefix + name + (slider ? ':' + slider.value : '')
         }
     }
     let best_segmentation_label = document.getElementById('best_segmentation_value')
     best_segmentation_label.textContent = best_segmentation_string
     lesions[current_lesion_index]['best_segmentation'] = best_segmentation_string
+    set_data_selected_row('best_segmentation', best_segmentation_string)
     save_to_local_storage()
 }
 
@@ -120,9 +123,7 @@ let create_checkbox = (name, image_index, visible, exclusive_button) => {
                 papaya.Container.hideImage(1, image_index)
             }
         }
-        if(task.fields.findIndex((e)=>e.field=='best_segmentation')>=0) {
-            update_best_segmentation()
-        }
+        update_best_segmentation()
     })
 }
 
@@ -203,6 +204,12 @@ let loaded_images = []
 let current_image_index = 0
 
 let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
+    let draw_button = document.getElementById('draw')    
+    if(draw_button.classList.contains('active')) {
+        draw_button.classList.remove('active')
+        draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
+        drawing = false
+    }
 
     for (let li of loaded_images) {
         delete window[li.name]
@@ -259,15 +266,14 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         for(let checkbox of checkboxes) {
             checkbox.disabled = false
         }
-        // let sv = papayaContainers[0].viewer.screenVolumes
-        // let volume = sv[sv.length - 1].volume
-        // let data = volume.imageData.data
-        // for (let i = 0; i < data.length; i++) {
-        //     // data[i] = 0
-        // }
-        // segmentation_data = data
-        // papayaContainers[0].viewer.drawViewer(true, false);
-        
+        let sv = papayaContainers[1].viewer.screenVolumes
+        let volume = sv[sv.length - 1].volume
+        let data = volume.imageData.data
+        for (let i = 0; i < data.length; i++) {
+            data[i] = 0
+        }
+        segmentation_data = data
+        papayaContainers[0].viewer.drawViewer(true, false);
     }
 
     let description = document.getElementById('description')
@@ -288,58 +294,90 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
     hide_loader()
 
-    // if (!initialized) {
-    //     initialized = true;
-    // let canvas = papayaContainers[0].viewer.canvas
-    // canvas.addEventListener('mousemove', listenerMouseMove, false);
-    // canvas.addEventListener('mousedown', listenerMouseDown, false);
-    // canvas.addEventListener('mouseup', listenerMouseUp, false);
-    // }
+    let canvas = papayaContainers[1].viewer.canvas
+    canvas.addEventListener('mousemove', listenerMouseMove, false);
+    canvas.addEventListener('mousedown', listenerMouseDown, false);
+    canvas.addEventListener('mouseup', listenerMouseUp, false);
 }
 
 let dragging = false
+let drawing = false
+let adding_voxels = true
 
 let listenerMouseMove = (event) => {
-    if (dragging) {
-
-        let viewer = papayaContainers[0].viewer
-        let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
-        let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
-
-        // let x = viewer.convertScreenToImageCoordinateX(currentMouseX - viewer.canvasRect.left, viewer.selectedSlice);
-        // let y = viewer.convertScreenToImageCoordinateY(currentMouseY - viewer.canvasRect.top, viewer.selectedSlice);
-        // let coord = viewer.convertCurrentCoordinateToScreen(viewer.selectedSlice);
-        let x = viewer.currentCoord.x
-        let y = viewer.currentCoord.y
-        let z = viewer.selectedSlice.currentSlice;
-        console.log(x, y, z)
-        let sv = papayaContainers[0].viewer.screenVolumes
-        let volume = sv[sv.length - 1].volume
-
-        let viewer_volume = papayaContainers[0].viewer.volume
-        // let xDim = viewer_volume.getXDim()
-        // let yDim = viewer_volume.getYDim()
-        // let zDim = viewer_volume.getZDim()
-        // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(coord.x, coord.y, coord.z)
-        let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
-        console.log(offset)
-        // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffsetNative(x, y, z)
-        segmentation_data[offset] = !segmentation_data[offset]
-        // console.log(!segmentation_data[offset])
-        // let index = ((y * xDim) + x) * 4;
-        // for (let i = 0; i < segmentation_data.length; i++) {
-        //     segmentation_data[i] = i % 5
-        // }
-        // segmentation_data[x+y*xDim+z*xDim*yDim] = 1
-        // segmentation_data[z+y*zDim+x*zDim*yDim] = 1
-        // segmentation_data[y+x*yDim+z*xDim*yDim] = 1
-
-        papayaContainers[0].viewer.drawViewer(true, false);
+    if (!drawing || !dragging) {
+        return
     }
+
+    let viewer = papayaContainers[1].viewer
+    let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
+    let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
+
+    let x = viewer.convertScreenToImageCoordinateX(currentMouseX - viewer.canvasRect.left, viewer.selectedSlice);
+    let y = viewer.convertScreenToImageCoordinateY(currentMouseY - viewer.canvasRect.top, viewer.selectedSlice);
+    
+    // let coord = viewer.convertCurrentCoordinateToScreen(viewer.selectedSlice);
+    // let x = viewer.currentCoord.x
+    // let y = viewer.currentCoord.y
+    let z = viewer.currentCoord.z
+    // let z = viewer.selectedSlice.currentSlice;
+    // console.log(x, y, z)
+    // let sv = papayaContainers[1].viewer.screenVolumes
+    // let volume = sv[sv.length - 1].volume
+
+    // let viewer_volume = papayaContainers[1].viewer.volume
+    // let xDim = viewer_volume.getXDim()
+    // let yDim = viewer_volume.getYDim()
+    // let zDim = viewer_volume.getZDim()
+    // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(coord.x, coord.y, coord.z)
+    let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
+    // console.log(offset)
+    // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffsetNative(x, y, z)
+    // segmentation_data[offset] = !segmentation_data[offset]
+    segmentation_data[offset] = adding_voxels ? 1 : 0
+    // console.log(!segmentation_data[offset])
+    // let index = ((y * xDim) + x) * 4;
+    // for (let i = 0; i < segmentation_data.length; i++) {
+    //     segmentation_data[i] = i % 5
+    // }
+    // segmentation_data[x+y*xDim+z*xDim*yDim] = 1
+    // segmentation_data[z+y*zDim+x*zDim*yDim] = 1
+    // segmentation_data[y+x*yDim+z*xDim*yDim] = 1
+
+    papayaContainers[1].viewer.drawViewer(true, false);
 }
 
 let listenerMouseDown = (event) => {
+    let viewer = papayaContainers[1].viewer
+    if(!drawing || viewer.isAltKeyDown) {
+        return
+    }
     dragging = true
+    
+    let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
+    let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
+    let xLoc = currentMouseX - viewer.canvasRect.left;
+    let yLoc = currentMouseY - viewer.canvasRect.top;
+    let selectedSlice = null
+
+    if (viewer.insideScreenSlice(viewer.axialSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getYDim())) {
+        selectedSlice = viewer.axialSlice
+    } else if (viewer.insideScreenSlice(viewer.coronalSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getZDim())) {
+        selectedSlice = viewer.coronalSlice
+    } else if (viewer.insideScreenSlice(viewer.sagittalSlice, xLoc, yLoc, viewer.volume.getYDim(), viewer.volume.getZDim())) {
+        selectedSlice = viewer.sagittalSlice
+    } else {
+        return
+    }
+    let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
+    let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
+    // let x = viewer.currentCoord.x
+    // let y = viewer.currentCoord.y
+    let z = viewer.currentCoord.z
+    let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
+    adding_voxels = segmentation_data[offset] == 0
+    segmentation_data[offset] = adding_voxels ? 1 : 0
+    papayaContainers[1].viewer.drawViewer(true, false);
 }
 
 let listenerMouseUp = (event) => {
@@ -420,7 +458,7 @@ let load_lesion = (i) => {
             let fiel_label = document.createElement('label')
             fiel_label.innerText = capitalize_first_letter(field_name) + ':'
             let field_span = null
-            if (field.list || field.longiseg_list) {
+            if (field.list || field.lv_list) {
                 field_span = document.createElement('ul')
                 field_span.style = 'max-height: 200px; overflow: auto;'
                 let list = JSON.parse(lesion[field_name].replaceAll("'", '"'))
@@ -429,7 +467,7 @@ let load_lesion = (i) => {
                     li.innerText = item
                     field_span.appendChild(li)
                 }
-            } else if (field.editable && field.longiseg_type == 'bool') {
+            } else if (field.editable && field.lv_type == 'bool') {
                 field_span = document.createElement('input');
                 field_span.setAttribute('type', 'checkbox')
                 field_span.setAttribute('data-field-name', field_name)
@@ -473,9 +511,12 @@ let load_lesion = (i) => {
         return
     }
 
-    // if(image_descriptions.length < 8) {
-    //     image_descriptions.push(image_descriptions[image_descriptions.length-1])
-    // }
+    if(image_descriptions.length < 8) {
+        let image_description = window.structuredClone(image_descriptions[image_descriptions.length-1])
+        image_description.name = 'new_segmentation'
+        image_description.parameters.lut = 'Green Overlay'
+        image_descriptions.push(image_description)
+    }
 
 
     description.innerText = 'loading ' + lesion['name'] + '...'
@@ -548,7 +589,7 @@ let create_table = () => {
                 field.field = field.name
             }
             
-            if(field.editable && field.longiseg_type == 'bool') {
+            if(field.editable && field.lv_type == 'bool') {
                 field.cellRenderer = 'checkboxRenderer'
             }
             columnDefs.push(field)
@@ -760,7 +801,7 @@ let save_to_local_storage = ()=> {
         Shiny.onInputChange("lesions", lesions_string);
     }
 
-    if(window.parent != null) {
+    if(window.parent != window) {
         window.parent.postMessage({task: lesions_string})
     }
 }
@@ -835,7 +876,9 @@ let add_close_button = ()=> {
     close_button.id = 'close_lesion_viewer'
     
     close_button.addEventListener('click', (event)=>{
-        window.parent.postMessage({action: 'hide'})
+        if(window.parent != window) {
+            window.parent.postMessage({action: 'hide'})
+        }
     })
     let toolbox = document.getElementById('toolbox')
     toolbox.insertBefore(close_button, toolbox.firstChild)
@@ -983,18 +1026,38 @@ document.addEventListener('DOMContentLoaded', function (event) {
         set_data_selected_row('valid', lesion.valid)
     })
 
-    let save = document.getElementById('save');
-    save.addEventListener('click', () => {
+    let save_task_button = document.getElementById('save_task');
+    save_task_button.addEventListener('click', () => {
         // task.lesion = lesions
-        let lesions_string = JSON.stringify(task, null, '\t')
+        downloadJSON(task, 'lesions.json')
+    })
 
-        var data_string = 'data:text/json;charset=utf-8,' + encodeURIComponent(lesions_string);
-        var download_node = document.createElement('a');
-        download_node.setAttribute('href', data_string);
-        download_node.setAttribute('download', 'lesions.json');
-        document.body.appendChild(download_node); // required for firefox
-        download_node.click();
-        download_node.remove();
+    let draw_button = document.getElementById('draw')
+    draw_button.addEventListener('click', () => {
+        if(draw_button.classList.contains('active')) {
+            draw_button.classList.remove('active')
+            draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
+            drawing = false
+        } else {
+            draw_button.classList.add('active')
+            draw_button.getElementsByTagName('span')[0].textContent = 'Stop drawing'
+            drawing = true
+        }
+    })
+
+    let save_segmentation_button = document.getElementById('save_segmentation');
+    save_segmentation_button.addEventListener('click', () => {
+        let volumes = papayaContainers[1].viewer.screenVolumes
+        let volume = volumes[volumes.length-1].volume
+        let data = volume.imageData.data
+        let meta_data = {
+            header: volume.header,
+            lesion: lesions[current_lesion_index],
+        }
+        first_image = lesions[current_lesion_index].images[0]
+        segmentation_name = first_image.file.replace(first_image.name, 'new_segmentation').replace('.nii.gz', '')
+        downloadBlob(data, `${segmentation_name}.bin`, 'application/octet-stream');
+        downloadJSON(meta_data, `${segmentation_name}.json`)
     })
 
     let prev_button = document.getElementById('prev')
@@ -1026,9 +1089,23 @@ document.addEventListener('DOMContentLoaded', function (event) {
     toggle_crosshairs_button.addEventListener('click', toggle_crosshairs)
 
     // loadFilesFromServer();
+
+
 });
 
 // Draw test
+
+const downloadJSON = (json, fileName) => {
+    let string = JSON.stringify(json, null, '\t')
+
+    var data_string = 'data:text/json;charset=utf-8,' + encodeURIComponent(string);
+    var download_node = document.createElement('a');
+    download_node.setAttribute('href', data_string);
+    download_node.setAttribute('download', fileName);
+    document.body.appendChild(download_node); // required for firefox
+    download_node.click();
+    download_node.remove();
+}
 
 const downloadURL = (data, fileName) => {
     const a = document.createElement('a')
@@ -1053,14 +1130,11 @@ const downloadBlob = (data, fileName, mimeType) => {
     setTimeout(() => window.URL.revokeObjectURL(url), 1000)
 }
 
-// data = papayaContainers[0].viewer.screenVolumes[4].volume.imageData.data
-// downloadBlob(data, 'test.bin', 'application/octet-stream');
-
-let write_test_volume = (data) => {
-    for (let i = 0; i < data.length; i++) {
-        data[i] = i % 255
-    }
-}
+// let write_test_volume = (data) => {
+//     for (let i = 0; i < data.length; i++) {
+//         data[i] = i % 255
+//     }
+// }
 
 // write_test_volume(data)
 // let canvas = papayaContainers[0].viewer.canvas

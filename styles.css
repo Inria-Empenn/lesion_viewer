@@ -127,3 +127,31 @@ body {
     right: 0;
     width: 30px;
 }
+
+#draw {
+    display: flex;
+    flex-direction: row;
+    padding: 10px;
+    align-items: center;
+    justify-content: center;
+    place-content: space-between;
+
+    color: white;
+    background-color: #2196f3;
+    border-radius: 3px;
+    border-style: outset;
+}
+
+#draw > svg {
+    width: 15px;
+    margin-right: 10px;
+    stroke: white;
+    fill: white;
+}
+
+#draw.active {
+    color: white;
+    background-color: #1976d2;
+    border-radius: 3px;
+    border-style: inset;
+}

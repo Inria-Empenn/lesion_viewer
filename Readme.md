@@ -126,7 +126,7 @@ A task file has the following structure:
 			"resizable": true,																# The column (width) will be resizable
 			"filter": true,																	# Enable to filter the column
 			"editable": true,																# Enable to edit values in the column
-			"longiseg_type": "bool",														# Create a checkbox in the column for this boolean value
+			"lv_type": "bool",														# Create a checkbox in the column for this boolean value
 		},
 		{
 			"field": "growing",
@@ -134,7 +134,7 @@ A task file has the following structure:
 			"resizable": true,
 			"filter": true,
 			"editable": true,
-			"longiseg_type": "bool",
+			"lv_type": "bool",
 		}
 	]
 }
