@@ -515,7 +515,10 @@ let load_lesion = (i) => {
         let image_description = window.structuredClone(image_descriptions[image_descriptions.length-1])
         image_description.name = 'new_segmentation'
         image_description.parameters.lut = 'Green Overlay'
-        image_descriptions.push(image_description)
+        // image_descriptions.push(image_description)
+        image_descriptions = image_descriptions.concat([image_description])
+    } else {
+        alert('There are 8 or more images to load, cannot display new_segmentation image on top because of Papaya.js limitation.')
     }
 
 

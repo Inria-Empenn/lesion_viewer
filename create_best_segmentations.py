@@ -78,11 +78,8 @@ for lesion in task['lesions']:
 			best_segmentation = best_segmentation_parts[0]
 		
 		# Find the path of this best_segmentation in the lesion images
-		best_segmentation_path = None
-		for image in lesion['images']:
-			if image['name'] == best_segmentation:
-				best_segmentation_path = data_path / image['file']
-				break
+		best_segmentation_files = [image['file'] for image in lesion['images'] if image['name'] == best_segmentation]
+		best_segmentation_path = data_path / best_segmentation_files[0] if len(best_segmentation_files) > 0 else None
 
 		# best_segmentation_path = data_path / filter(lambda image: image['name'] == best_segmentation, lesion['images'])['file']
 
@@ -105,28 +102,32 @@ for lesion in task['lesions']:
 			if final_segmentation_image is None:
 				final_segmentation_image = sitk.Cast(best_segmentation_image, sitk.sitkUInt8)
 			else:
-				import ipdb; ipdb.set_trace()
-				print(best_segmentations)
-				print(best_segmentation)
-				sitk.WriteImage(best_segmentation_image, '/data/amasson/test/a0.nii.gz')
-				sitk.WriteImage(final_segmentation_image, '/data/amasson/test/a1.nii.gz')
+				# import ipdb; ipdb.set_trace()
+				# print(best_segmentations)
+				# print(best_segmentation)
+				# sitk.WriteImage(best_segmentation_image, f'/data/amasson/test/a_{best_segmentation}.nii.gz')
+				# sitk.WriteImage(final_segmentation_image, f'/data/amasson/test/a_{best_segmentation}_final_image.nii.gz')
 				final_segmentation_image = final_segmentation_image | sitk.Cast(best_segmentation_image, sitk.sitkUInt8)
-				sitk.WriteImage(final_segmentation_image, '/data/amasson/test/a2.nii.gz')
+				# sitk.WriteImage(final_segmentation_image, f'/data/amasson/test/a_{best_segmentation}_final_image2.nii.gz')
 		else:
 			print('ERROR: ', best_segmentation, 'not found: path ', best_segmentation_path, ' does not exist.')
 	
+	# import ipdb; ipdb.set_trace()
+
 	# If we computed a final_segmentation_image: update the new ground truth for the lesion patient 
 	if final_segmentation_image is not None:
 
 		# Label the final_segmentation to get the entire region under the lesion in the reference image
 		final_segmentation_labeled = ccifilter.Execute(final_segmentation_image)
 		final_segmentation_labeled_data = sitk.GetArrayFromImage(final_segmentation_labeled)
-		lesion_data = final_segmentation_labeled_data[reference_labeled_data == lesion['index']]
+		lesion_center = json.loads(lesion['location_voxel'])
+		lesion_index = reference_labeled_data[lesion_center[2], lesion_center[1], lesion_center[0]]
+		lesion_data = final_segmentation_labeled_data[reference_labeled_data == lesion_index]
 
 		# The entire region is the one which has the most frequent label under the lesion: 
 		# compute the number of occurence of each values, then find the argmax to get the most frequent value
 		# ignore the zero values, so the argmax must be incremented
-		biggest_lesion_index = np.argmax(np.bincount(lesion_data.flatten())[1:]) + 1
+		most_frequent_lesion_index = np.argmax(np.bincount(lesion_data.flatten())[1:]) + 1
 		
 		# Find the new patient ground truth: if it does not exist, initialize it with zero values (from the initial ground truth)
 		patient_ground_truth_path = final_ground_truth_path / str(lesion['patient'] + '.nii.gz')
@@ -139,7 +140,7 @@ for lesion in task['lesions']:
 			patient_ground_truth_image_data = np.zeros(sitk.GetArrayFromImage(patient_ground_truth_image).shape)
 
 		# Update the new patient ground truth and save it 
-		patient_ground_truth_image_data[final_segmentation_labeled_data == biggest_lesion_index] = 1
+		patient_ground_truth_image_data[final_segmentation_labeled_data == most_frequent_lesion_index] = 1
 		patient_final_ground_truth_image = sitk.GetImageFromArray(patient_ground_truth_image_data)
 		patient_final_ground_truth_image.CopyInformation(patient_ground_truth_image)
 		sitk.WriteImage(patient_final_ground_truth_image, str(patient_ground_truth_path))
