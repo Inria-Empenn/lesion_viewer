@@ -302,7 +302,22 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
 let dragging = false
 let drawing = false
+let brush_size = 1
 let adding_voxels = true
+
+let drawAtVoxel = (x, y, z) => {
+
+    bs = brush_size-1
+    for(let dx=-bs ; dx<=bs ; dx++) {
+        for(let dy=-bs ; dy<=bs ; dy++) {
+            if(Math.sqrt(dx*dx+dy*dy)>=brush_size) {
+                continue
+            }
+            let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x+dx, y+dy, z)
+            segmentation_data[offset] = adding_voxels ? 1 : 0
+        }
+    }
+}
 
 let listenerMouseMove = (event) => {
     if (!drawing || !dragging) {
@@ -330,11 +345,14 @@ let listenerMouseMove = (event) => {
     // let yDim = viewer_volume.getYDim()
     // let zDim = viewer_volume.getZDim()
     // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(coord.x, coord.y, coord.z)
-    let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
+    // let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
     // console.log(offset)
     // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffsetNative(x, y, z)
     // segmentation_data[offset] = !segmentation_data[offset]
-    segmentation_data[offset] = adding_voxels ? 1 : 0
+    // segmentation_data[offset] = adding_voxels ? 1 : 0
+    
+    drawAtVoxel(x, y, z)
+
     // console.log(!segmentation_data[offset])
     // let index = ((y * xDim) + x) * 4;
     // for (let i = 0; i < segmentation_data.length; i++) {
@@ -369,14 +387,18 @@ let listenerMouseDown = (event) => {
     } else {
         return
     }
-    let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
-    let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
     // let x = viewer.currentCoord.x
     // let y = viewer.currentCoord.y
+
+    let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
+    let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
     let z = viewer.currentCoord.z
+    
     let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
     adding_voxels = segmentation_data[offset] == 0
-    segmentation_data[offset] = adding_voxels ? 1 : 0
+
+    drawAtVoxel(x, y, z)
+    
     papayaContainers[1].viewer.drawViewer(true, false);
 }
 
@@ -1046,6 +1068,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
             draw_button.getElementsByTagName('span')[0].textContent = 'Stop drawing'
             drawing = true
         }
+    })
+
+    let brush_size_slider = document.getElementById('slider_brush_size')
+    brush_size_slider.addEventListener('change', (event)=> {
+        brush_size = parseFloat(event.target.value)
+        document.getElementById('label_brush_size').textContent = brush_size
     })
 
     let save_segmentation_button = document.getElementById('save_segmentation');
