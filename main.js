@@ -47,7 +47,7 @@ let update_best_segmentation = ()=> {
             if(name == 't2_time01') {
                 continue
             }
-            let slider = document.getElementById('slider_'+name)
+            let slider = document.getElementById('threshold_'+name+'_number')
             let plus_prefix = best_segmentation_string.length > 0 ? ' + ' : ''
             best_segmentation_string += plus_prefix + name + (slider ? ':' + slider.value : '')
         }
@@ -127,7 +127,47 @@ let create_checkbox = (name, image_index, visible, exclusive_button) => {
     })
 }
 
-let create_slider = (name, image_index, visible) => {
+let save_new_segmentation = ()=> {
+    let segmentation_string = new TextDecoder('utf-8').decode(segmentation_data)
+    compressed = LZString.compressToUTF16(segmentation_string)
+    let command_index = localStorage.getItem('current-command')
+    if(command_index == null) {
+        command_index = 0 
+    } else {
+        command_index = parseInt(command_index) + 1
+    }
+    localStorage.setItem('current-command', command_index)
+    localStorage.setItem('history'+command_index, compressed)
+    // localStorage.setItem('segmentation', compressed)
+}
+
+let execute = (command_index)=> {
+    localStorage.setItem('current-command', command_index)
+    let compressed = localStorage.getItem('history'+command_index)
+    let segmentation_string = LZString.decompressFromUTF16(compressed)
+    segmentation_data = new TextEncoder().encode(segmentation_string)
+    papayaContainers[1].viewer.drawViewer(true, false)
+}
+
+let undo = ()=> {
+    let command_index = localStorage.getItem('current-command')
+    if(command_index == null) {
+        return 
+    }
+    command_index = parseInt(command_index) - 1
+    execute(command_index)
+}
+
+let redo = ()=> {
+    let command_index = localStorage.getItem('current-command')
+    if(command_index == null) {
+        return 
+    }
+    command_index = parseInt(command_index) + 1
+    execute(command_index)
+}
+
+let create_slider = (name, image_index, visible, parameters) => {
     let container = document.getElementById('toggle-visibility-buttons')
 
     {/* <div>
@@ -137,48 +177,91 @@ let create_slider = (name, image_index, visible) => {
 
     let div = document.createElement('div');
     div.classList.add('slider')
-    let label = document.createElement('label');
-    // label.setAttribute('for', 'slider_' + name)
+    // let label = document.createElement('label');
+    // label.setAttribute('for', 'threshold_' + name)
     // label.innerText = 'Threshold'
-    let input = document.createElement('input');
-    input.setAttribute('type', 'range')
-    input.setAttribute('id', 'slider_' + name)
-    input.setAttribute('min', 0)
-    input.setAttribute('max', 1)
-    input.setAttribute('step', 0.01)
-    input.setAttribute('class', 'slider')
-    input.setAttribute('name', name)
-    input.disabled = true
-    value_label = document.createElement('label');
-    value_label.setAttribute('id', 'slider_label_' + name)
-    value_label.innerText = ''
-    // div.appendChild(label)
-    div.appendChild(input)
-    div.appendChild(value_label)
+    for(let input_type of ['range', 'number']) {
+
+        let input = document.createElement('input');
+        input.setAttribute('type', input_type)
+        input.setAttribute('id', 'threshold_' + name + '_' + input_type)
+        input.setAttribute('min', parameters != null && parameters.min != null ? parameters.min : 0)
+        input.setAttribute('max', parameters != null && parameters.max != null ? parameters.max : 1)
+        input.setAttribute('step', parameters != null && parameters.step != null ? parameters.step : 0.001)
+        input.setAttribute('class', 'slider')
+        input.setAttribute('data-index', image_index)
+        input.setAttribute('name', name)
+        input.disabled = true
+        div.appendChild(input)
+
+        input.addEventListener('change', (event) => {
+            let value = parseFloat(event.target.value)
+            let min = input.value > 0.01 ? value : 0
+            let max = input.value > 0.01 ? value : 1
+            papayaContainers[1].viewer.screenVolumes[image_index].updateMinLUT(min*papaya.viewer.ColorTable.LUT_MAX);
+            papayaContainers[1].viewer.screenVolumes[image_index].updateMaxLUT(max*papaya.viewer.ColorTable.LUT_MAX);
+            papayaContainers[1].viewer.screenVolumes[image_index].updateColorBar();
+            papayaContainers[1].viewer.screenVolumes[image_index].setScreenRange(min, max);
+            papayaContainers[1].viewer.drawViewer(true, false);
+            
+            other_input_type = input_type == 'range' ? 'number' : 'range'
+            let other_input = document.getElementById('threshold_' + name + '_' + other_input_type)
+            other_input.value = value
+
+            // let name = event.target.id.replace('threshold_', '')
+            // let value_label = document.getElementById('threshold_label_'+name)
+            // value_label.innerText = value
+            // papaya.Container.hideImage(1, image_index)
+            // papaya.Container.showImage(1, image_index)
+
+            let checkbox = document.getElementById('checkbox_'+name)
+            checkbox.checked = true
+            checkbox.dispatchEvent(new Event('change'))
+
+            update_best_segmentation()
+        })
+    }
+    // let input = document.createElement('input');
+    // input.setAttribute('type', 'range')
+    // input.setAttribute('id', 'threshold_' + name)
+    // input.setAttribute('min', parameters != null && parameters.min != null ? parameters.min : 0)
+    // input.setAttribute('max', parameters != null && parameters.max != null ? parameters.max : 1)
+    // input.setAttribute('step', parameters != null && parameters.step != null ? parameters.step : 0.001)
+    // input.setAttribute('class', 'slider')
+    // input.setAttribute('name', name)
+    // input.disabled = true
+    // value_label = document.createElement('label');
+    // value_label.setAttribute('id', 'threshold_label_' + name)
+    // value_label.innerText = ''
+    // // div.appendChild(label)
+    // div.appendChild(input)
+    // div.appendChild(value_label)
     container.appendChild(div);
 
-    input.addEventListener('change', (event) => {
-        let value = parseFloat(event.target.value)
-        let min = input.value > 0.01 ? value : 0
-        let max = input.value > 0.01 ? value : 1
-        papayaContainers[1].viewer.screenVolumes[image_index].updateMinLUT(min*papaya.viewer.ColorTable.LUT_MAX);
-        papayaContainers[1].viewer.screenVolumes[image_index].updateMaxLUT(max*papaya.viewer.ColorTable.LUT_MAX);
-        papayaContainers[1].viewer.screenVolumes[image_index].updateColorBar();
-        papayaContainers[1].viewer.screenVolumes[image_index].setScreenRange(min, max);
-        papayaContainers[1].viewer.drawViewer(true, false);
-        let name = event.target.id.replace('slider_', '')
-        let value_label = document.getElementById('slider_label_'+name)
-        value_label.innerText = value
-        // papaya.Container.hideImage(1, image_index)
-        // papaya.Container.showImage(1, image_index)
-
-        let checkbox = document.getElementById('checkbox_'+name)
-        checkbox.checked = true
-        checkbox.dispatchEvent(new Event('change'))
-
-        update_best_segmentation()
-    })
 }
+
+// let create_fill_button = (name, image_index) => {
+//     let container = document.getElementById('toggle-visibility-buttons')
+//     let button = document.createElement('button');
+//     button.textContent = 'Fill'
+//     button.addEventListener('click', (event)=> {
+//         let viewer = papayaContainers[1].viewer
+//         let cc = viewer.currentCoord
+//         let todo = [cc]
+//         let seen = new Set()
+//         let threshold_number = document.getElementById('threshold_' + name + '_number')
+//         let threshold = threshold_number.value
+//         let volume = papayaContainers[1].viewer.screenVolumes[image_index].volume
+//         let orientation = volume.transform.voxelValue.orientation
+//         let offset = orientation.convertIndexToOffset(cc.x, cc.y, cc.z)
+//         seen.add(offset)
+//         while(todo.length > 0) {
+//             flood_fill(todo, seen, threshold, image_index)
+//         }
+//         papayaContainers[1].viewer.drawViewer(true, false);
+//     })
+//     container.appendChild(button);
+// }
 
 let create_toggle_button = (button_name, image_index, visible) => {
     let container = document.getElementById('toggle-visibility-buttons')
@@ -241,8 +324,11 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         loaded_images.push({ name: image_name, file_name: file_name, index: image_index, display_name: display_name })
 
         params[image_name] = parameters
+        // if(image_parameter.fill_button) {
+        //     create_fill_button(display_name, image_index)
+        // }
         if(image_parameter.threshold_slider) {
-            create_slider(display_name, image_index, image_parameter.display)
+            create_slider(display_name, image_index, image_parameter.display, image_parameter.parameters)
         }
         create_checkbox(display_name, image_index, image_parameter.display, image_parameter.exclusive_button)
         image_parameter.image_index = image_index
@@ -302,6 +388,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
 let dragging = false
 let drawing = false
+let filling = false
 let brush_size = 1
 let adding_voxels = true
 
@@ -403,6 +490,31 @@ let listenerMouseDown = (event) => {
 }
 
 let listenerMouseUp = (event) => {
+    if(filling) {
+        let viewer = papayaContainers[1].viewer
+        let cc = viewer.currentCoord
+        let todo = [cc]
+        
+        for(let i=0 ; i<papayaContainers[1].viewer.screenVolumes.length ; i++) {
+            let volume = papayaContainers[1].viewer.screenVolumes[i].volume
+            let checkbox = document.querySelector('#toggle-visibility-buttons input[type="checkbox"][data-index="'+i+'"]')
+            let input_number = document.querySelector('#toggle-visibility-buttons input[type="number"][data-index="'+i+'"]')
+            let threshold = input_number != null ? parseFloat(input_number.value) : -1
+            if(checkbox != null && checkbox.checked && threshold > 0) {
+                let offset = volume.transform.voxelValue.orientation.convertIndexToOffset(cc.x, cc.y, cc.z)
+                let offsets = new Set()
+                if(volume.imageData.data[offset] > threshold) {
+                    offsets.add(offset)
+                    while(todo.length > 0) {
+                        flood_fill(todo, offsets, threshold, i)
+                    }
+                }
+            }
+
+        }
+        papayaContainers[1].viewer.drawViewer(true, false);
+
+    }
     dragging = false
 }
 
@@ -566,7 +678,8 @@ let load_lesion = (i) => {
             parameters: image_description.parameters, 
             display: image_description.display, 
             threshold_slider: image_description.threshold_slider,
-            exclusive_button: image_description.exclusive_button
+            exclusive_button: image_description.exclusive_button,
+            // fill_button: image_description.fill_button
         })
     }
     if(images_url != null) {
@@ -920,6 +1033,39 @@ window.onmessage = function(event) {
     }
 };
 
+let flood_fill = (todo, offsets, threshold, volumeIndex)=> {
+    let cc = todo.shift()
+    let volume = papayaContainers[1].viewer.screenVolumes[volumeIndex].volume
+    let orientation = volume.transform.voxelValue.orientation
+    let offset = orientation.convertIndexToOffset(cc.x, cc.y, cc.z)
+    
+    let volume_data = volume.imageData.data
+    if(volume_data[offset] < threshold) {
+        return
+    }
+
+    segmentation_data[offset] = 1
+
+    // for(let dx=-1 ; dx<=1 ; dx++) {
+    //     for(let dy=-1 ; dy<=1 ; dy++) {
+    //         let offset = orientation.convertIndexToOffset(cc.x+dx, cc.y+dy, cc.z)
+    //         if(!offsets.has(offset) && volume_data[offset] > threshold) {
+    //             todo.push({x: cc.x+dx, y: cc.y+dy, z: cc.z})
+    //         }
+    //     }
+    // }
+    for(let deltas of [[0, -1], [1, 0], [0,1], [-1, 0]]) {
+        let dx = deltas[0]
+        let dy = deltas[1]
+        let offset = orientation.convertIndexToOffset(cc.x+dx, cc.y+dy, cc.z)
+        if(!offsets.has(offset)) {
+            offsets.add(offset)
+            todo.push({x: cc.x+dx, y: cc.y+dy, z: cc.z})
+        }
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', function (event) {
     
     let body = document.querySelector('body')
@@ -955,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
 
     resize_viewer()
-    
+
 
     for(let i=0 ; i<2 ; i++) {
         let papaya_container = document.getElementById('papaya-container' + i)
@@ -1070,6 +1216,19 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
     })
 
+    let fill_button = document.getElementById('fill')
+    fill_button.addEventListener('click', () => {
+        if(fill_button.classList.contains('active')) {
+            fill_button.classList.remove('active')
+            fill_button.getElementsByTagName('span')[0].textContent = 'Fill'
+            filling = false
+        } else {
+            fill_button.classList.add('active')
+            fill_button.getElementsByTagName('span')[0].textContent = 'Stop filling'
+            filling = true
+        }
+    })
+
     let brush_size_slider = document.getElementById('slider_brush_size')
     brush_size_slider.addEventListener('change', (event)=> {
         brush_size = parseFloat(event.target.value)
@@ -1121,6 +1280,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     // loadFilesFromServer();
 
+    document.getElementById('papaya-containers').addEventListener('click', (event)=> {
+        document.activeElement.blur()
+    })
 
 });
 
@@ -1187,6 +1349,11 @@ let toggle_image = (n)=> {
 }
 
 document.addEventListener('keyup', (event)=> {
+    let toolbox = document.getElementById('toolbox')
+    let plot_div = document.getElementById('plot_div')
+    if(toolbox.contains(document.activeElement) || plot_div.contains(document.activeElement)) {
+        return
+    }
     let n = parseInt(event.key)
     if(Number.isInteger(n)) {
         toggle_image(n)

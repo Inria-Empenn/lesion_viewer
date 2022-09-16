@@ -128,7 +128,7 @@ body {
     width: 30px;
 }
 
-#draw {
+.tool {
     display: flex;
     flex-direction: row;
     padding: 10px;
@@ -142,16 +142,26 @@ body {
     border-style: outset;
 }
 
-#draw > svg {
+.tool > svg {
     width: 15px;
     margin-right: 10px;
     stroke: white;
     fill: white;
 }
 
-#draw.active {
+.tool.active {
     color: white;
     background-color: #1976d2;
     border-radius: 3px;
     border-style: inset;
+}
+
+.lv-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.lv-row {
+    display: flex;
+    flex-direction: row;
 }
