@@ -127,45 +127,60 @@ let create_checkbox = (name, image_index, visible, exclusive_button) => {
     })
 }
 
-let save_new_segmentation = ()=> {
-    let segmentation_string = new TextDecoder('utf-8').decode(segmentation_data)
-    compressed = LZString.compressToUTF16(segmentation_string)
-    let command_index = localStorage.getItem('current-command')
-    if(command_index == null) {
-        command_index = 0 
-    } else {
-        command_index = parseInt(command_index) + 1
+let save_new_segmentation = () => {
+    let volumes = papayaContainers[1].viewer.screenVolumes
+    let volume = volumes[volumes.length-1].volume
+    let data = volume.imageData.data
+    let meta_data = {
+        header: volume.header,
+        lesion: lesions[current_lesion_index],
     }
-    localStorage.setItem('current-command', command_index)
-    localStorage.setItem('history'+command_index, compressed)
+    first_image = lesions[current_lesion_index].images[0]
+    segmentation_name = first_image.file.replace(first_image.name, 'new_segmentation').replace('.nii.gz', '')
+    downloadBlob(data, `${segmentation_name}.bin`, 'application/octet-stream');
+    downloadJSON(meta_data, `${segmentation_name}.json`)
+    segmentation_is_modified = false
+}
+
+let save_new_segmentation_to_local_storage = ()=> {
+    // let segmentation_string = new TextDecoder('utf-8').decode(segmentation_data)
+    // compressed = LZString.compressToUTF16(segmentation_string)
+    // let command_index = localStorage.getItem('current-command')
+    // if(command_index == null) {
+    //     command_index = 0 
+    // } else {
+    //     command_index = parseInt(command_index) + 1
+    // }
+    // localStorage.setItem('current-command', command_index)
+    // localStorage.setItem('history'+command_index, compressed)
     // localStorage.setItem('segmentation', compressed)
 }
 
-let execute = (command_index)=> {
-    localStorage.setItem('current-command', command_index)
-    let compressed = localStorage.getItem('history'+command_index)
-    let segmentation_string = LZString.decompressFromUTF16(compressed)
-    segmentation_data = new TextEncoder().encode(segmentation_string)
-    papayaContainers[1].viewer.drawViewer(true, false)
-}
+// let execute = (command_index)=> {
+//     localStorage.setItem('current-command', command_index)
+//     let compressed = localStorage.getItem('history'+command_index)
+//     let segmentation_string = LZString.decompressFromUTF16(compressed)
+//     segmentation_data = new TextEncoder().encode(segmentation_string)
+//     papayaContainers[1].viewer.drawViewer(true, false)
+// }
 
-let undo = ()=> {
-    let command_index = localStorage.getItem('current-command')
-    if(command_index == null) {
-        return 
-    }
-    command_index = parseInt(command_index) - 1
-    execute(command_index)
-}
+// let undo = ()=> {
+//     let command_index = localStorage.getItem('current-command')
+//     if(command_index == null) {
+//         return 
+//     }
+//     command_index = parseInt(command_index) - 1
+//     execute(command_index)
+// }
 
-let redo = ()=> {
-    let command_index = localStorage.getItem('current-command')
-    if(command_index == null) {
-        return 
-    }
-    command_index = parseInt(command_index) + 1
-    execute(command_index)
-}
+// let redo = ()=> {
+//     let command_index = localStorage.getItem('current-command')
+//     if(command_index == null) {
+//         return 
+//     }
+//     command_index = parseInt(command_index) + 1
+//     execute(command_index)
+// }
 
 let create_slider = (name, image_index, visible, parameters) => {
     let container = document.getElementById('toggle-visibility-buttons')
@@ -381,18 +396,19 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     hide_loader()
 
     let canvas = papayaContainers[1].viewer.canvas
-    canvas.addEventListener('mousemove', listenerMouseMove, false);
-    canvas.addEventListener('mousedown', listenerMouseDown, false);
-    canvas.addEventListener('mouseup', listenerMouseUp, false);
+    canvas.addEventListener('mousemove', on_mouse_move, false);
+    canvas.addEventListener('mousedown', on_mouse_down, false);
+    canvas.addEventListener('mouseup', on_mouse_up, false);
 }
 
 let dragging = false
 let drawing = false
+let segmentation_is_modified = false
 let filling = false
 let brush_size = 1
 let adding_voxels = true
 
-let drawAtVoxel = (x, y, z) => {
+let draw_voxel = (x, y, z) => {
 
     bs = brush_size-1
     for(let dx=-bs ; dx<=bs ; dx++) {
@@ -404,9 +420,10 @@ let drawAtVoxel = (x, y, z) => {
             segmentation_data[offset] = adding_voxels ? 1 : 0
         }
     }
+    segmentation_is_modified = true
 }
 
-let listenerMouseMove = (event) => {
+let on_mouse_move = (event) => {
     if (!drawing || !dragging) {
         return
     }
@@ -414,9 +431,13 @@ let listenerMouseMove = (event) => {
     let viewer = papayaContainers[1].viewer
     let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
     let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
+    let xLoc = currentMouseX - viewer.canvasRect.left
+    let yLoc = currentMouseY - viewer.canvasRect.top
 
-    let x = viewer.convertScreenToImageCoordinateX(currentMouseX - viewer.canvasRect.left, viewer.selectedSlice);
-    let y = viewer.convertScreenToImageCoordinateY(currentMouseY - viewer.canvasRect.top, viewer.selectedSlice);
+    let selectedSlice = get_selected_slice(xLoc, yLoc)
+
+    let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
+    let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
     
     // let coord = viewer.convertCurrentCoordinateToScreen(viewer.selectedSlice);
     // let x = viewer.currentCoord.x
@@ -438,7 +459,7 @@ let listenerMouseMove = (event) => {
     // segmentation_data[offset] = !segmentation_data[offset]
     // segmentation_data[offset] = adding_voxels ? 1 : 0
     
-    drawAtVoxel(x, y, z)
+    draw_voxel(x, y, z)
 
     // console.log(!segmentation_data[offset])
     // let index = ((y * xDim) + x) * 4;
@@ -452,9 +473,22 @@ let listenerMouseMove = (event) => {
     papayaContainers[1].viewer.drawViewer(true, false);
 }
 
-let listenerMouseDown = (event) => {
+let get_selected_slice = (xLoc, yLoc)=> {
+    let selectedSlice = null
     let viewer = papayaContainers[1].viewer
-    if(!drawing || viewer.isAltKeyDown) {
+    if (viewer.insideScreenSlice(viewer.axialSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getYDim())) {
+        selectedSlice = viewer.axialSlice
+    } else if (viewer.insideScreenSlice(viewer.coronalSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getZDim())) {
+        selectedSlice = viewer.coronalSlice
+    } else if (viewer.insideScreenSlice(viewer.sagittalSlice, xLoc, yLoc, viewer.volume.getYDim(), viewer.volume.getZDim())) {
+        selectedSlice = viewer.sagittalSlice
+    }
+    return selectedSlice
+}
+
+let on_mouse_down = (event) => {
+    let viewer = papayaContainers[1].viewer
+    if(!drawing && !filling || viewer.isAltKeyDown) {
         return
     }
     dragging = true
@@ -463,19 +497,10 @@ let listenerMouseDown = (event) => {
     let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
     let xLoc = currentMouseX - viewer.canvasRect.left;
     let yLoc = currentMouseY - viewer.canvasRect.top;
-    let selectedSlice = null
-
-    if (viewer.insideScreenSlice(viewer.axialSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getYDim())) {
-        selectedSlice = viewer.axialSlice
-    } else if (viewer.insideScreenSlice(viewer.coronalSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getZDim())) {
-        selectedSlice = viewer.coronalSlice
-    } else if (viewer.insideScreenSlice(viewer.sagittalSlice, xLoc, yLoc, viewer.volume.getYDim(), viewer.volume.getZDim())) {
-        selectedSlice = viewer.sagittalSlice
-    } else {
-        return
-    }
+   
     // let x = viewer.currentCoord.x
     // let y = viewer.currentCoord.y
+    let selectedSlice = get_selected_slice(xLoc, yLoc)
 
     let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
     let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
@@ -484,12 +509,7 @@ let listenerMouseDown = (event) => {
     let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
     adding_voxels = segmentation_data[offset] == 0
 
-    drawAtVoxel(x, y, z)
-    
-    papayaContainers[1].viewer.drawViewer(true, false);
-}
 
-let listenerMouseUp = (event) => {
     if(filling) {
         let viewer = papayaContainers[1].viewer
         let cc = viewer.currentCoord
@@ -514,7 +534,14 @@ let listenerMouseUp = (event) => {
         }
         papayaContainers[1].viewer.drawViewer(true, false);
 
+    } else {
+        draw_voxel(x, y, z)
     }
+
+    papayaContainers[1].viewer.drawViewer(true, false);
+}
+
+let on_mouse_up = (event) => {
     dragging = false
 }
 
@@ -635,6 +662,12 @@ let load_lesion = (i) => {
             need_to_load = true;
             break
         }
+    }
+
+    if(need_to_load && segmentation_is_modified) {
+        save_new_segmentation()
+        load_lesion(current_lesion_index)
+        return
     }
 
     let description = document.getElementById('description')
@@ -993,11 +1026,11 @@ let toggle_crosshairs = () => {
 }
 
 async function loadFilesFromServer() {
-    const response = await fetch("/nnunet_predictions/lesions_arthur_comments.json");
+    const response = await fetch("/data/task.json");
 
     try {
         const json = await response.json();
-        images_url = '/nnunet_predictions/'
+        images_url = '/data/'
         load_task(json)
     } catch (e) {
         console.log(e);
@@ -1044,7 +1077,8 @@ let flood_fill = (todo, offsets, threshold, volumeIndex)=> {
         return
     }
 
-    segmentation_data[offset] = 1
+    segmentation_data[offset] = adding_voxels ? 1 : 0
+    segmentation_is_modified = true
 
     // for(let dx=-1 ; dx<=1 ; dx++) {
     //     for(let dy=-1 ; dy<=1 ; dy++) {
@@ -1156,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         var zip = new JSZip();
         zip.loadAsync(this.files[0] /* = file blob */)
             .then(function (local_zip) {
+                images_url = null
                 image_archive = local_zip;
                 for (let file in image_archive.files) {
                     if (file.endsWith('.json')) {
@@ -1178,6 +1213,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         if (this.files.length == 0) {
             return
         }
+        images_url = null
         image_files = this.files
     };
 
@@ -1204,6 +1240,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
     })
 
     let draw_button = document.getElementById('draw')
+    let fill_button = document.getElementById('fill')
+
     draw_button.addEventListener('click', () => {
         if(draw_button.classList.contains('active')) {
             draw_button.classList.remove('active')
@@ -1211,12 +1249,14 @@ document.addEventListener('DOMContentLoaded', function (event) {
             drawing = false
         } else {
             draw_button.classList.add('active')
+            fill_button.classList.remove('active')
             draw_button.getElementsByTagName('span')[0].textContent = 'Stop drawing'
+            fill_button.getElementsByTagName('span')[0].textContent = 'Fill'
             drawing = true
+            filling = false
         }
     })
 
-    let fill_button = document.getElementById('fill')
     fill_button.addEventListener('click', () => {
         if(fill_button.classList.contains('active')) {
             fill_button.classList.remove('active')
@@ -1224,7 +1264,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
             filling = false
         } else {
             fill_button.classList.add('active')
+            draw_button.classList.remove('active')
             fill_button.getElementsByTagName('span')[0].textContent = 'Stop filling'
+            draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
+            drawing = false
             filling = true
         }
     })
@@ -1236,19 +1279,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
     })
 
     let save_segmentation_button = document.getElementById('save_segmentation');
-    save_segmentation_button.addEventListener('click', () => {
-        let volumes = papayaContainers[1].viewer.screenVolumes
-        let volume = volumes[volumes.length-1].volume
-        let data = volume.imageData.data
-        let meta_data = {
-            header: volume.header,
-            lesion: lesions[current_lesion_index],
-        }
-        first_image = lesions[current_lesion_index].images[0]
-        segmentation_name = first_image.file.replace(first_image.name, 'new_segmentation').replace('.nii.gz', '')
-        downloadBlob(data, `${segmentation_name}.bin`, 'application/octet-stream');
-        downloadJSON(meta_data, `${segmentation_name}.json`)
-    })
+    save_segmentation_button.addEventListener('click', save_new_segmentation)
 
     let prev_button = document.getElementById('prev')
     prev_button.addEventListener('click', () => {
@@ -1278,12 +1309,42 @@ document.addEventListener('DOMContentLoaded', function (event) {
     let toggle_crosshairs_button = document.getElementById('toggle-crosshairs')
     toggle_crosshairs_button.addEventListener('click', toggle_crosshairs)
 
-    // loadFilesFromServer();
+    loadFilesFromServer();
 
     document.getElementById('papaya-containers').addEventListener('click', (event)=> {
         document.activeElement.blur()
     })
 
+
+    document.addEventListener('keyup', (event)=> {
+        let toolbox = document.getElementById('toolbox')
+        let plot_div = document.getElementById('plot_div')
+        if(toolbox.contains(document.activeElement) || plot_div.contains(document.activeElement)) {
+            return
+        }
+        let n = parseInt(event.key)
+        if(Number.isInteger(n)) {
+            toggle_image(n)
+        }
+        if(event.key == '*') {
+            toggle_image(loaded_images.length-1)
+        }
+        if(event.key == '-') {
+            while(current_image_index > 0 && papayaContainers[1].viewer.screenVolumes[current_image_index].hidden) {
+                current_image_index--
+            }
+            toggle_image(current_image_index)
+        }
+        if(event.key == '+') {
+            while(current_image_index < loaded_images.length-1 && !papayaContainers[1].viewer.screenVolumes[current_image_index].hidden) {
+                current_image_index++
+            }
+            toggle_image(current_image_index)
+        }
+        if(event.key == 'c') {
+            toggle_crosshairs()
+        }
+    })
 });
 
 // Draw test
@@ -1331,11 +1392,11 @@ const downloadBlob = (data, fileName, mimeType) => {
 
 // write_test_volume(data)
 // let canvas = papayaContainers[0].viewer.canvas
-// canvas.addEventListener('mousemove', this.listenerMouseMove, false);
-// canvas.addEventListener('mousedown', this.listenerMouseDown, false);
+// canvas.addEventListener('mousemove', this.on_mouse_move, false);
+// canvas.addEventListener('mousedown', this.on_mouse_down, false);
 // // canvas.addEventListener('mouseout', this.listenerMouseOut, false);
 // // canvas.addEventListener('mouseleave', this.listenerMouseLeave, false);
-// canvas.addEventListener('mouseup', this.listenerMouseUp, false);
+// canvas.addEventListener('mouseup', this.on_mouse_up, false);
 
 let toggle_image = (n)=> {
     if(n < 0 || n >= loaded_images.length) {
@@ -1347,33 +1408,3 @@ let toggle_image = (n)=> {
         checkbox.click()
     }
 }
-
-document.addEventListener('keyup', (event)=> {
-    let toolbox = document.getElementById('toolbox')
-    let plot_div = document.getElementById('plot_div')
-    if(toolbox.contains(document.activeElement) || plot_div.contains(document.activeElement)) {
-        return
-    }
-    let n = parseInt(event.key)
-    if(Number.isInteger(n)) {
-        toggle_image(n)
-    }
-    if(event.key == '*') {
-        toggle_image(loaded_images.length-1)
-    }
-    if(event.key == '-') {
-        while(current_image_index > 0 && papayaContainers[1].viewer.screenVolumes[current_image_index].hidden) {
-            current_image_index--
-        }
-        toggle_image(current_image_index)
-    }
-    if(event.key == '+') {
-        while(current_image_index < loaded_images.length-1 && !papayaContainers[1].viewer.screenVolumes[current_image_index].hidden) {
-            current_image_index++
-        }
-        toggle_image(current_image_index)
-    }
-    if(event.key == 'c') {
-        toggle_crosshairs()
-    }
-})
