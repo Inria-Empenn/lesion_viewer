@@ -992,17 +992,17 @@ let toggle_crosshairs = () => {
     }
 }
 
-async function loadFilesFromServer() {
-    const response = await fetch("/nnunet_predictions/lesions_arthur_comments.json");
+// async function loadFilesFromServer() {
+//     const response = await fetch("/data/lesions_arthur_comments.json");
 
-    try {
-        const json = await response.json();
-        images_url = '/nnunet_predictions/'
-        load_task(json)
-    } catch (e) {
-        console.log(e);
-    }
-}
+//     try {
+//         const json = await response.json();
+//         images_url = '/data/'
+//         load_task(json)
+//     } catch (e) {
+//         console.log(e);
+//     }
+// }
 
 let add_close_button = ()=> {
     let close_button = document.getElementById('close_lesion_viewer')
@@ -1028,7 +1028,7 @@ window.onmessage = function(event) {
         resize_viewer()
     }
     if (event.data.task != null) {
-        images_url = '/nnunet_predictions/'
+        images_url = '/data/'
         load_task(event.data.task)
     }
 };
