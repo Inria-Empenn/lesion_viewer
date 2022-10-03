@@ -1,4 +1,3 @@
-from importlib.metadata import metadata
 import sys
 from pathlib import Path
 import argparse
@@ -42,11 +41,14 @@ def convert(binary_path, json_path, data_path, output_path):
 
 	with open(str(json_path), 'r') as f:
 		meta_data = json.load(f)
+	
 	image_dimensions = meta_data['header']['imageDimensions']
 
-	data = data.reshape([image_dimensions['zDim'], image_dimensions['yDim'], image_dimensions['xDim'], 2])
-
-	data = data[:,:,:,0]
+	if 'timepoints' in image_dimensions and image_dimensions['timepoints']>0:
+		data = data.reshape([image_dimensions['zDim'], image_dimensions['yDim'], image_dimensions['xDim'], image_dimensions['timepoints']])
+		data = data[:,:,:,0]
+	else:
+		data = data.reshape([image_dimensions['zDim'], image_dimensions['yDim'], image_dimensions['xDim']])
 
 	reference = sitk.ReadImage(str(data_path / meta_data['lesion']['images'][0]['file']))
 	image = sitk.GetImageFromArray(data)
@@ -80,3 +82,5 @@ if __name__ == "__main__":
 
 	if not data_path.exists():
 		sys.exit(f'Path {data_path} does not exist.')
+
+	convert(binary_path, json_path, data_path, output_path)
