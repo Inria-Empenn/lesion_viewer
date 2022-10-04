@@ -450,7 +450,7 @@ let filling = false
 let brush_size = 1
 let adding_voxels = true
 
-let draw_voxel = (x, y, z) => {
+let draw_voxel = (x, y, z, slice) => {
 
     bs = brush_size-1
     for(let dx=-bs ; dx<=bs ; dx++) {
@@ -458,75 +458,35 @@ let draw_voxel = (x, y, z) => {
             if(Math.sqrt(dx*dx+dy*dy)>=brush_size) {
                 continue
             }
-            let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x+dx, y+dy, z)
+            let [xf, yf, zf] = slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
+            let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(xf, yf, zf)
             segmentation_data[offset] = adding_voxels ? 1 : 0
         }
     }
     segmentation_is_modified = true
 }
 
-let on_mouse_move = (event) => {
-
+let get_xy_loc = (event)=> {
     let viewer = papayaContainers[1].viewer
     let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
     let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
+    if(viewer.canvasRect == null) {
+        return [currentMouseX, currentMouseY]
+    }
     let xLoc = currentMouseX - viewer.canvasRect.left;
     let yLoc = currentMouseY - viewer.canvasRect.top;
-   
-    // let x = viewer.currentCoord.x
-    // let y = viewer.currentCoord.y
-    let selectedSlice = get_selected_slice(xLoc, yLoc)
-    if(selectedSlice != viewer.mainImage) {
-        set_auto_cursor()
-    } else {
-        set_brush_cursor()
-    }
-
-    if (!drawing || !dragging) {
-        return
-    }
-
-
-    let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
-    let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
-    
-    // let coord = viewer.convertCurrentCoordinateToScreen(viewer.selectedSlice);
-    // let x = viewer.currentCoord.x
-    // let y = viewer.currentCoord.y
-    let z = viewer.currentCoord.z
-    // let z = viewer.selectedSlice.currentSlice;
-    // console.log(x, y, z)
-    // let sv = papayaContainers[1].viewer.screenVolumes
-    // let volume = sv[sv.length - 1].volume
-
-    // let viewer_volume = papayaContainers[1].viewer.volume
-    // let xDim = viewer_volume.getXDim()
-    // let yDim = viewer_volume.getYDim()
-    // let zDim = viewer_volume.getZDim()
-    // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(coord.x, coord.y, coord.z)
-    // let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
-    // console.log(offset)
-    // let offset = papayaContainers[0].viewer.volume.transform.voxelValue.orientation.convertIndexToOffsetNative(x, y, z)
-    // segmentation_data[offset] = !segmentation_data[offset]
-    // segmentation_data[offset] = adding_voxels ? 1 : 0
-    
-    draw_voxel(x, y, z)
-
-    // console.log(!segmentation_data[offset])
-    // let index = ((y * xDim) + x) * 4;
-    // for (let i = 0; i < segmentation_data.length; i++) {
-    //     segmentation_data[i] = i % 5
-    // }
-    // segmentation_data[x+y*xDim+z*xDim*yDim] = 1
-    // segmentation_data[z+y*zDim+x*zDim*yDim] = 1
-    // segmentation_data[y+x*yDim+z*xDim*yDim] = 1
-
-    papayaContainers[1].viewer.drawViewer(true, false);
+    return [xLoc, yLoc]
 }
 
-let get_selected_slice = (xLoc, yLoc)=> {
+let get_selected_slice = (event)=> {
     let selectedSlice = null
     let viewer = papayaContainers[1].viewer
+    let [xLoc, yLoc] = get_xy_loc(event)
+
+    if(viewer.canvasRect == null) {
+        return viewer.mainSlice
+    }
+
     if (viewer.insideScreenSlice(viewer.axialSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getYDim())) {
         selectedSlice = viewer.axialSlice
     } else if (viewer.insideScreenSlice(viewer.coronalSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getZDim())) {
@@ -535,6 +495,50 @@ let get_selected_slice = (xLoc, yLoc)=> {
         selectedSlice = viewer.sagittalSlice
     }
     return selectedSlice
+}
+
+let get_cursor_position = (event)=> {
+    let viewer = papayaContainers[1].viewer
+
+    let [xLoc, yLoc] = get_xy_loc(event)
+
+    let xImageLoc, yImageLoc, zImageLoc;
+
+    if (viewer.insideScreenSlice(viewer.axialSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getYDim())) {
+        xImageLoc = viewer.convertScreenToImageCoordinateX(xLoc, viewer.axialSlice);
+        yImageLoc = viewer.convertScreenToImageCoordinateY(yLoc, viewer.axialSlice);
+        zImageLoc = viewer.axialSlice.currentSlice;
+    } else if (viewer.insideScreenSlice(viewer.coronalSlice, xLoc, yLoc, viewer.volume.getXDim(), viewer.volume.getZDim())) {
+        xImageLoc = viewer.convertScreenToImageCoordinateX(xLoc, viewer.coronalSlice);
+        zImageLoc = viewer.convertScreenToImageCoordinateY(yLoc, viewer.coronalSlice);
+        yImageLoc = viewer.coronalSlice.currentSlice;
+    } else if (viewer.insideScreenSlice(viewer.sagittalSlice, xLoc, yLoc, viewer.volume.getYDim(), viewer.volume.getZDim())) {
+        yImageLoc = viewer.convertScreenToImageCoordinateX(xLoc, viewer.sagittalSlice);
+        zImageLoc = viewer.convertScreenToImageCoordinateY(yLoc, viewer.sagittalSlice);
+        xImageLoc = viewer.sagittalSlice.currentSlice;
+    }
+    return [xImageLoc, yImageLoc, zImageLoc]
+}
+
+let on_mouse_move = (event) => {
+
+    let viewer = papayaContainers[1].viewer
+    let selectedSlice = get_selected_slice(event)
+    if(selectedSlice != viewer.mainImage) {
+        set_auto_cursor()
+    } else if (drawing) {
+        set_brush_cursor()
+    }
+
+    if (!drawing || !dragging) {
+        return
+    }
+
+    let [x, y, z] = get_cursor_position(event)
+        
+    draw_voxel(x, y, z, selectedSlice.sliceDirection)
+
+    papayaContainers[1].viewer.drawViewer(true, false);
 }
 
 let on_mouse_down = (event) => {
@@ -546,21 +550,16 @@ let on_mouse_down = (event) => {
         return
     }
     
-    let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
-    let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
-    let xLoc = currentMouseX - viewer.canvasRect.left;
-    let yLoc = currentMouseY - viewer.canvasRect.top;
-   
-    // let x = viewer.currentCoord.x
-    // let y = viewer.currentCoord.y
-    let selectedSlice = get_selected_slice(xLoc, yLoc)
+    if(viewer.canvasRect == null) {
+        return
+    }
+
+    let selectedSlice = get_selected_slice(event)
     if(selectedSlice != viewer.mainImage) {
         return
     }
     dragging = true
-    let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
-    let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
-    let z = viewer.currentCoord.z
+    let [x, y, z] = get_cursor_position(event)
     
     let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
     adding_voxels = segmentation_data[offset] == 0
@@ -591,7 +590,7 @@ let on_mouse_down = (event) => {
         papayaContainers[1].viewer.drawViewer(true, false);
 
     } else {
-        draw_voxel(x, y, z)
+        draw_voxel(x, y, z, selectedSlice.sliceDirection)
     }
 
     papayaContainers[1].viewer.drawViewer(true, false);
