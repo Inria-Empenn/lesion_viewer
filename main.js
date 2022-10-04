@@ -182,6 +182,47 @@ let save_new_segmentation_to_local_storage = ()=> {
 //     execute(command_index)
 // }
 
+let cursor_png_size = 50
+
+let draw_cursor = ()=> {
+    const canvas = document.createElement('canvas');
+    size = cursor_png_size
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d');
+
+    // Draw the ellipse
+    let scale = 5
+    ctx.beginPath();
+    ctx.ellipse(size/2, size/2, scale*brush_size, scale*brush_size, 0, 0, 2*Math.PI);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(size/2, size/2, 1, 1, 0, 0, 2*Math.PI);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+	ctx.strokeStyle = "white";
+    let offset = 0.5;
+    ctx.ellipse(size/2, size/2, scale*brush_size-2*offset, scale*brush_size-2*offset, 0, 0, 2*Math.PI);
+	ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(size/2, size/2, 2, 2, 0, 0, 2*Math.PI);
+	ctx.stroke();
+
+    return canvas.toDataURL();
+}
+
+let set_brush_cursor = ()=> {
+    $('#papayaViewer1 > canvas').css({'cursor': 'url('+draw_cursor()+') '+(cursor_png_size/2)+' '+(cursor_png_size/2)+', auto'})
+}
+
+let set_auto_cursor = ()=> {
+    $('#papayaViewer1 > canvas').css({'cursor': 'crosshair'})
+}
+
 let create_slider = (name, image_index, visible, parameters) => {
     let container = document.getElementById('toggle-visibility-buttons')
 
@@ -307,6 +348,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         draw_button.classList.remove('active')
         draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
         drawing = false
+        set_auto_cursor()
     }
 
     for (let li of loaded_images) {
@@ -424,17 +466,26 @@ let draw_voxel = (x, y, z) => {
 }
 
 let on_mouse_move = (event) => {
-    if (!drawing || !dragging) {
-        return
-    }
 
     let viewer = papayaContainers[1].viewer
     let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
     let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
-    let xLoc = currentMouseX - viewer.canvasRect.left
-    let yLoc = currentMouseY - viewer.canvasRect.top
-
+    let xLoc = currentMouseX - viewer.canvasRect.left;
+    let yLoc = currentMouseY - viewer.canvasRect.top;
+   
+    // let x = viewer.currentCoord.x
+    // let y = viewer.currentCoord.y
     let selectedSlice = get_selected_slice(xLoc, yLoc)
+    if(selectedSlice != viewer.mainImage) {
+        set_auto_cursor()
+    } else {
+        set_brush_cursor()
+    }
+
+    if (!drawing || !dragging) {
+        return
+    }
+
 
     let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
     let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
@@ -488,10 +539,12 @@ let get_selected_slice = (xLoc, yLoc)=> {
 
 let on_mouse_down = (event) => {
     let viewer = papayaContainers[1].viewer
+    if(viewer.isAltKeyDown && !event.altKey) {
+        viewer.isAltKeyDown = false
+    }
     if(!drawing && !filling || viewer.isAltKeyDown) {
         return
     }
-    dragging = true
     
     let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
     let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
@@ -501,7 +554,10 @@ let on_mouse_down = (event) => {
     // let x = viewer.currentCoord.x
     // let y = viewer.currentCoord.y
     let selectedSlice = get_selected_slice(xLoc, yLoc)
-
+    if(selectedSlice != viewer.mainImage) {
+        return
+    }
+    dragging = true
     let x = viewer.convertScreenToImageCoordinateX(xLoc, selectedSlice);
     let y = viewer.convertScreenToImageCoordinateY(yLoc, selectedSlice);
     let z = viewer.currentCoord.z
@@ -1247,6 +1303,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             draw_button.classList.remove('active')
             draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
             drawing = false
+            set_auto_cursor()
         } else {
             draw_button.classList.add('active')
             fill_button.classList.remove('active')
@@ -1254,6 +1311,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             fill_button.getElementsByTagName('span')[0].textContent = 'Fill'
             drawing = true
             filling = false
+            set_brush_cursor()
         }
     })
 
@@ -1268,6 +1326,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             fill_button.getElementsByTagName('span')[0].textContent = 'Stop filling'
             draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
             drawing = false
+            set_auto_cursor()
             filling = true
         }
     })
@@ -1276,6 +1335,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
     brush_size_slider.addEventListener('change', (event)=> {
         brush_size = parseFloat(event.target.value)
         document.getElementById('label_brush_size').textContent = brush_size
+        if(drawing) {
+            set_brush_cursor()
+        }
     })
 
     let save_segmentation_button = document.getElementById('save_segmentation');
