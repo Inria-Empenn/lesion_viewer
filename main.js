@@ -44,7 +44,8 @@ let update_best_segmentation = ()=> {
         if(checkbox.checked) {
             let checkbox_id = checkbox.id
             let name = checkbox_id.replace('checkbox_', '')
-            if(name == 't2_time01') {
+            let image_type = checkbox.getAttribute('data-image-type')
+            if(image_type == 'image') {
                 continue
             }
             let slider = document.getElementById('threshold_'+name+'_number')
@@ -59,7 +60,7 @@ let update_best_segmentation = ()=> {
     save_to_local_storage()
 }
 
-let create_checkbox = (name, image_index, visible, exclusive_button) => {
+let create_checkbox = (name, image_index, visible, exclusive_button, image_type='') => {
     let container = document.getElementById('toggle-visibility-buttons')
 
     {/* <div>
@@ -75,6 +76,7 @@ let create_checkbox = (name, image_index, visible, exclusive_button) => {
     let input = document.createElement('input');
     input.setAttribute('type', 'checkbox')
     input.setAttribute('data-index', image_index)
+    input.setAttribute('data-image-type', image_type)
     input.setAttribute('id', 'checkbox_' + name)
     input.setAttribute('name', name)
     input.checked = visible
@@ -387,7 +389,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         if(image_parameter.threshold_slider) {
             create_slider(display_name, image_index, image_parameter.display, image_parameter.parameters)
         }
-        create_checkbox(display_name, image_index, image_parameter.display, image_parameter.exclusive_button)
+        create_checkbox(display_name, image_index, image_parameter.display, image_parameter.exclusive_button, image_parameter.image_type)
         image_parameter.image_index = image_index
         image_index++
     }
@@ -449,6 +451,39 @@ let segmentation_is_modified = false
 let filling = false
 let brush_size = 1
 let adding_voxels = true
+
+let flood_fill = (todo, offsets, threshold, volumeIndex, slice)=> {
+    let [x, y, z] = todo.shift()
+    let volume = papayaContainers[1].viewer.screenVolumes[volumeIndex].volume
+    let orientation = volume.transform.voxelValue.orientation
+    let offset = orientation.convertIndexToOffset(x, y, z)
+    
+    let volume_data = volume.imageData.data
+    if(volume_data[offset] < threshold) {
+        return
+    }
+
+    segmentation_data[offset] = adding_voxels ? 1 : 0
+    segmentation_is_modified = true
+
+    // for(let dx=-1 ; dx<=1 ; dx++) {
+    //     for(let dy=-1 ; dy<=1 ; dy++) {
+    //         let offset = orientation.convertIndexToOffset(x+dx, y+dy, z)
+    //         if(!offsets.has(offset) && volume_data[offset] > threshold) {
+    //             todo.push([x+dx, y+dy, z])
+    //         }
+    //     }
+    // }
+    for(let deltas of [[0, -1], [1, 0], [0,1], [-1, 0]]) {
+        let [dx, dy] = deltas
+        let [xf, yf, zf] = slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
+        let offset = orientation.convertIndexToOffset(xf, yf, zf)
+        if(!offsets.has(offset)) {
+            offsets.add(offset)
+            todo.push([xf, yf, zf])
+        }
+    }
+}
 
 let draw_voxel = (x, y, z, slice) => {
 
@@ -564,36 +599,34 @@ let on_mouse_down = (event) => {
     let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
     adding_voxels = segmentation_data[offset] == 0
 
-
     if(filling) {
-        let viewer = papayaContainers[1].viewer
-        let cc = viewer.currentCoord
-        let todo = [cc]
         
-        for(let i=0 ; i<papayaContainers[1].viewer.screenVolumes.length ; i++) {
-            let volume = papayaContainers[1].viewer.screenVolumes[i].volume
+        for(let i=0 ; i<viewer.screenVolumes.length ; i++) {
+            let todo = [[x, y, z]]
+            let volume = viewer.screenVolumes[i].volume
             let checkbox = document.querySelector('#toggle-visibility-buttons input[type="checkbox"][data-index="'+i+'"]')
             let input_number = document.querySelector('#toggle-visibility-buttons input[type="number"][data-index="'+i+'"]')
-            let threshold = input_number != null ? parseFloat(input_number.value) : -1
+            let image_type = checkbox != null ? checkbox.getAttribute('data-image-type') : null
+            let threshold = input_number != null ? parseFloat(input_number.value) : (image_type != 'image' ? 1 : -1)
             if(checkbox != null && checkbox.checked && threshold > 0) {
-                let offset = volume.transform.voxelValue.orientation.convertIndexToOffset(cc.x, cc.y, cc.z)
+                let offset = volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
                 let offsets = new Set()
-                if(volume.imageData.data[offset] > threshold) {
+                if(volume.imageData.data[offset] >= threshold) {
                     offsets.add(offset)
                     while(todo.length > 0) {
-                        flood_fill(todo, offsets, threshold, i)
+                        flood_fill(todo, offsets, threshold, i, selectedSlice.sliceDirection)
                     }
                 }
             }
 
         }
-        papayaContainers[1].viewer.drawViewer(true, false);
+        viewer.drawViewer(true, false);
 
     } else {
         draw_voxel(x, y, z, selectedSlice.sliceDirection)
     }
 
-    papayaContainers[1].viewer.drawViewer(true, false);
+    viewer.drawViewer(true, false);
 }
 
 let on_mouse_up = (event) => {
@@ -736,7 +769,7 @@ let load_lesion = (i) => {
     if(image_descriptions.length < 8) {
         let image_description = window.structuredClone(image_descriptions[image_descriptions.length-1])
         image_description.name = 'new_segmentation'
-        image_description.parameters.lut = 'Green Overlay'
+        image_description.parameters.lut = 'Blue Overlay'
         // image_descriptions.push(image_description)
         image_descriptions = image_descriptions.concat([image_description])
     } else {
@@ -767,6 +800,7 @@ let load_lesion = (i) => {
             display: image_description.display, 
             threshold_slider: image_description.threshold_slider,
             exclusive_button: image_description.exclusive_button,
+            image_type: image_description.image_type
             // fill_button: image_description.fill_button
         })
     }
@@ -1120,40 +1154,6 @@ window.onmessage = function(event) {
         load_task(event.data.task)
     }
 };
-
-let flood_fill = (todo, offsets, threshold, volumeIndex)=> {
-    let cc = todo.shift()
-    let volume = papayaContainers[1].viewer.screenVolumes[volumeIndex].volume
-    let orientation = volume.transform.voxelValue.orientation
-    let offset = orientation.convertIndexToOffset(cc.x, cc.y, cc.z)
-    
-    let volume_data = volume.imageData.data
-    if(volume_data[offset] < threshold) {
-        return
-    }
-
-    segmentation_data[offset] = adding_voxels ? 1 : 0
-    segmentation_is_modified = true
-
-    // for(let dx=-1 ; dx<=1 ; dx++) {
-    //     for(let dy=-1 ; dy<=1 ; dy++) {
-    //         let offset = orientation.convertIndexToOffset(cc.x+dx, cc.y+dy, cc.z)
-    //         if(!offsets.has(offset) && volume_data[offset] > threshold) {
-    //             todo.push({x: cc.x+dx, y: cc.y+dy, z: cc.z})
-    //         }
-    //     }
-    // }
-    for(let deltas of [[0, -1], [1, 0], [0,1], [-1, 0]]) {
-        let dx = deltas[0]
-        let dy = deltas[1]
-        let offset = orientation.convertIndexToOffset(cc.x+dx, cc.y+dy, cc.z)
-        if(!offsets.has(offset)) {
-            offsets.add(offset)
-            todo.push({x: cc.x+dx, y: cc.y+dy, z: cc.z})
-        }
-    }
-}
-
 
 document.addEventListener('DOMContentLoaded', function (event) {
     
