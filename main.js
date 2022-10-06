@@ -601,7 +601,7 @@ let on_mouse_down = (event) => {
 
     if(filling) {
         
-        for(let i=0 ; i<viewer.screenVolumes.length ; i++) {
+        for(let i=adding_voxels?0:viewer.screenVolumes.length-1 ; i<viewer.screenVolumes.length ; i++) {
             let todo = [[x, y, z]]
             let volume = viewer.screenVolumes[i].volume
             let checkbox = document.querySelector('#toggle-visibility-buttons input[type="checkbox"][data-index="'+i+'"]')
@@ -988,6 +988,7 @@ window.addEventListener('resize', function (event) {
 })
 
 let load_lesions = (l) => {
+    loaded_images = []
     lesions = l
     if (lesions.length > 0) {
         load_from_local_storage()
@@ -1074,10 +1075,11 @@ let load_from_local_storage = ()=> {
         let stored_lesions = JSON.parse(lesions_string)
         let stored_lesion_found = stored_lesions.findIndex((sl)=> lesions.findIndex((l)=> l.name == sl.name) >= 0) >= 0
         if(stored_lesion_found) {
-            let overwrite = confirm('One or more lesion information was stored in this browser.\nDo you want to overwrite it?\n (Choose "Ok" to overwrite, or "Cancel" to load the selected file without browser data)')
+            let overwrite = task != null && task.parameters != null && task.parameters.confirm_overwrite ?
+            confirm('One or more lesion information was stored in this browser.\nDo you want to overwrite it?\n (Choose "Ok" to overwrite, or "Cancel" to load the selected file without browser data)') : task != null && task.parameters != null && task.parameters.ignore_local_storage ? false : true
             if(overwrite) {
                 // just overwrite editable data
-                for(let lesion of lesions) {         
+                for(let lesion of lesions) {
                     let stored_lesion_index = stored_lesions.findIndex((l)=> l.name == lesion.name)
                     if(stored_lesion_index < 0 || stored_lesion_index >= stored_lesions.length) {
                         continue
