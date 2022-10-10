@@ -798,8 +798,8 @@ let load_lesion = (i) => {
             file_name: file_name, 
             parameters: image_description.parameters, 
             display: image_description.display, 
-            threshold_slider: image_description.threshold_slider,
-            exclusive_button: image_description.exclusive_button,
+            threshold_slider: image_description.threshold_slider == 'true',
+            exclusive_button: image_description.exclusive_button == 'true',
             image_type: image_description.image_type
             // fill_button: image_description.fill_button
         })
