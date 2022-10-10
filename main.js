@@ -129,6 +129,45 @@ let create_checkbox = (name, image_index, visible, exclusive_button, image_type=
     })
 }
 
+
+let rle_encode = (data) => {
+    let last = data[0]
+    let result = [last]
+    let n=1
+    for(let i=1 ; i<data.length ; i++) {
+        if(data[i]==last) {
+            n++
+        } else {
+            result.push(n)
+            n=1
+            last = data[i]
+        }
+    }
+    result.push(n)
+    return result
+}
+
+let rle_decode = (data) => {
+    let result = []
+    let value = data[0]
+    for(let i=1 ; i<data.length ; i++) {
+        result = result.concat(Array(data[i]).fill(value))
+        value = 1 - value
+    }
+    return result
+}
+
+let check_rle = (data) => {
+    encoded = rle_encode(data)
+    decoded = rle_decode(encoded)
+    for(let i=0 ; i<data.length ; i++) {
+        if(decoded[i] != data[i]) {
+            console.log(i, decoded[i], data[i])
+            break
+        }
+    }
+}
+
 let save_new_segmentation = () => {
     let volumes = papayaContainers[1].viewer.screenVolumes
     let volume = volumes[volumes.length-1].volume
@@ -139,8 +178,16 @@ let save_new_segmentation = () => {
     }
     first_image = lesions[current_lesion_index].images[0]
     segmentation_name = first_image.file.replace(first_image.name, 'new_segmentation').replace('.nii.gz', '')
-    downloadBlob(data, `${segmentation_name}.bin`, 'application/octet-stream');
-    downloadJSON(meta_data, `${segmentation_name}.json`)
+    
+    if(window.parent != window) {
+        // check_rle(data)
+        let data_string = JSON.stringify(rle_encode(data))
+        window.parent.postMessage({segmentation: { data: data_string, meta_data: JSON.stringify(meta_data, null, '\t') }})
+    } else {
+        downloadBlob(data, `${segmentation_name}.bin`, 'application/octet-stream');
+        downloadJSON(meta_data, `${segmentation_name}.json`)    
+    }
+
     segmentation_is_modified = false
 }
 

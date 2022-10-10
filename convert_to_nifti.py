@@ -35,9 +35,24 @@ def set_image_info_from_header(image, meta_data): # not used
 
 	return
 
-def convert(binary_path, json_path, data_path, output_path):
+def rle_decode(data):
+	value = data[0]
+	result = []
+	for length in data[1:]:
+		result += [value] * length
+		value = 1 - value
+	return np.array(result)
+
+def convert(binary_path, json_path, data_path, output_path, rle):
 	meta_data = None
-	data = np.fromfile(str(binary_path), dtype=np.uint8)
+
+	if rle:
+		with open(binary_path, 'r') as f:
+			data = json.load(f)
+			data = rle_decode(data)
+	else:
+		data = np.fromfile(str(binary_path), dtype=np.uint8)
+
 
 	with open(str(json_path), 'r') as f:
 		meta_data = json.load(f)
@@ -67,6 +82,7 @@ if __name__ == "__main__":
 	parser.add_argument('-j', '--json', help='The json file (for example segmentation.json)', required=True)
 	parser.add_argument('-dp', '--data_path', help='The folder containing the image from which the segmentation has been generated.', required=True)
 	parser.add_argument('-o', '--output', help='The output nifti file', required=True)
+	parser.add_argument('-r', '--rle', help='If the binary was compressed using Run-length encoding (RLE).', action='store_true')
 	args = parser.parse_args()
 
 	binary_path = Path(args.binary)
@@ -83,4 +99,4 @@ if __name__ == "__main__":
 	if not data_path.exists():
 		sys.exit(f'Path {data_path} does not exist.')
 
-	convert(binary_path, json_path, data_path, output_path)
+	convert(binary_path, json_path, data_path, output_path, args.rle)
