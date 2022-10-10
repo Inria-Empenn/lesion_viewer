@@ -399,6 +399,13 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     params['smoothDisplay'] = false
     params['ignoreNiftiTransforms'] = true
     params['loadingComplete'] = () => {
+
+        let viewer = papayaContainers[1].viewer
+        let new_segmentation_screen_volume = viewer.screenVolumes[viewer.screenVolumes.length-1]
+        new_segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
+        new_segmentation_screen_volume.setScreenRange(0, 9)
+        papayaContainers[1].toolbar.updateImageButtons()
+
         go_to_lesion(lesions[current_lesion_index])
         for (let image_parameter of image_parameters) {
             if (image_parameter.display != null && !image_parameter.display) {
@@ -769,9 +776,6 @@ let load_lesion = (i) => {
     if(image_descriptions.length < 8) {
         let image_description = window.structuredClone(image_descriptions[image_descriptions.length-1])
         image_description.name = 'new_segmentation'
-        image_description.file_name = 'new_segmentation'
-        image_description.parameters.lut = 'Red Overlay'
-        image_description.parameters.max = 9
         // image_descriptions.push(image_description)
         image_descriptions = image_descriptions.concat([image_description])
     } else {
