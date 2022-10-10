@@ -4,7 +4,7 @@ papaya.Container.syncViewers = true;
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'smoothDisplay', 'No', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'showOrientation', 'Yes', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
 papaya.viewer.Viewer.MAX_OVERLAYS = 12;
-
+papaya.utilities.PlatformUtils.smallScreen = false;
 // To draw / change the data of a volume:
 // papayaContainers[0].viewer.screenVolumes[3].volume.imageData.data[i] = 1
 
@@ -769,7 +769,9 @@ let load_lesion = (i) => {
     if(image_descriptions.length < 8) {
         let image_description = window.structuredClone(image_descriptions[image_descriptions.length-1])
         image_description.name = 'new_segmentation'
-        image_description.parameters.lut = 'Blue Overlay'
+        image_description.file_name = 'new_segmentation'
+        image_description.parameters.lut = 'Red Overlay'
+        image_description.parameters.max = 9
         // image_descriptions.push(image_description)
         image_descriptions = image_descriptions.concat([image_description])
     } else {
