@@ -400,11 +400,6 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     params['ignoreNiftiTransforms'] = true
     params['loadingComplete'] = () => {
 
-        let viewer = papayaContainers[1].viewer
-        let new_segmentation_screen_volume = viewer.screenVolumes[viewer.screenVolumes.length-1]
-        new_segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
-        new_segmentation_screen_volume.setScreenRange(0, 9)
-        papayaContainers[1].toolbar.updateImageButtons()
 
         go_to_lesion(lesions[current_lesion_index])
         for (let image_parameter of image_parameters) {
@@ -418,14 +413,18 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         for(let checkbox of checkboxes) {
             checkbox.disabled = false
         }
-        let sv = papayaContainers[1].viewer.screenVolumes
-        let volume = sv[sv.length - 1].volume
-        let data = volume.imageData.data
+        let viewer = papayaContainers[1].viewer
+        let new_segmentation_screen_volume = viewer.screenVolumes[viewer.screenVolumes.length-1]
+        new_segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
+        new_segmentation_screen_volume.setScreenRange(0, 9)
+        papayaContainers[1].toolbar.updateImageButtons()
+        let new_segmentation_volume = new_segmentation_screen_volume.volume
+        let data = new_segmentation_volume.imageData.data
         for (let i = 0; i < data.length; i++) {
             data[i] = 0
         }
         segmentation_data = data
-        papayaContainers[0].viewer.drawViewer(true, false);
+        viewer.drawViewer(true, false);
     }
 
     let description = document.getElementById('description')
