@@ -361,7 +361,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     if(image_archive != null) {
         params['encodedImages'] = []
     } else if(images_url != null) {
-        params['images'] = images.map((name)=> images_url + name )
+        params['images'] = images.map((name)=> images_url + name + '?v=' + Math.random() )
     } else {
         params['files'] = images
     }
