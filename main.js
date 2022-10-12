@@ -21,7 +21,7 @@ let image_files = null;
 let task = {};
 let lesions = [];
 let grid = null;
-let segmentation_data = null;
+let editable_image_data = null;
 
 let show_loader = () => {
     let loader = document.getElementById('loader')
@@ -170,13 +170,17 @@ let check_rle = (data) => {
 
 let save_new_segmentation = () => {
     let volumes = papayaContainers[1].viewer.screenVolumes
-    let volume = volumes[volumes.length-1].volume
+    let editable_image_index = get_editable_image_index()
+    if(editable_image_index == null) {
+        return
+    }
+    let volume = volumes[editable_image_index].volume
     let data = volume.imageData.data
     let meta_data = {
         header: volume.header,
         lesion: lesions[current_lesion_index],
     }
-    first_image = lesions[current_lesion_index].images[0]
+    first_image = lesions[current_lesion_index].images[editable_image_index]
     segmentation_name = first_image.file.replace(first_image.name, 'new_segmentation').replace('.nii.gz', '')
     
     if(window.parent != window) {
@@ -192,7 +196,7 @@ let save_new_segmentation = () => {
 }
 
 let save_new_segmentation_to_local_storage = ()=> {
-    // let segmentation_string = new TextDecoder('utf-8').decode(segmentation_data)
+    // let segmentation_string = new TextDecoder('utf-8').decode(editable_image_data)
     // compressed = LZString.compressToUTF16(segmentation_string)
     // let command_index = localStorage.getItem('current-command')
     // if(command_index == null) {
@@ -209,7 +213,7 @@ let save_new_segmentation_to_local_storage = ()=> {
 //     localStorage.setItem('current-command', command_index)
 //     let compressed = localStorage.getItem('history'+command_index)
 //     let segmentation_string = LZString.decompressFromUTF16(compressed)
-//     segmentation_data = new TextEncoder().encode(segmentation_string)
+//     editable_image_data = new TextEncoder().encode(segmentation_string)
 //     papayaContainers[1].viewer.drawViewer(true, false)
 // }
 
@@ -391,6 +395,10 @@ let create_toggle_button = (button_name, image_index, visible) => {
 let loaded_images = []
 let current_image_index = 0
 
+let get_editable_image_index = ()=> {
+    return task.lesions[current_lesion_index].images.findIndex((image)=>image.editable)
+}
+
 let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     let draw_button = document.getElementById('draw')    
     if(draw_button.classList.contains('active')) {
@@ -461,16 +469,20 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
             checkbox.disabled = false
         }
         let viewer = papayaContainers[1].viewer
-        let new_segmentation_screen_volume = viewer.screenVolumes[viewer.screenVolumes.length-1]
-        new_segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
-        new_segmentation_screen_volume.setScreenRange(0, 9)
+        let editable_image_index = get_editable_image_index()
+        if(editable_image_index == null) {
+            return
+        }
+        let new_segmentation_screen_volume = viewer.screenVolumes[editable_image_index]
+        // new_segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
+        // new_segmentation_screen_volume.setScreenRange(0, 9)
         papayaContainers[1].toolbar.updateImageButtons()
         let new_segmentation_volume = new_segmentation_screen_volume.volume
         let data = new_segmentation_volume.imageData.data
-        for (let i = 0; i < data.length; i++) {
-            data[i] = 0
-        }
-        segmentation_data = data
+        // for (let i = 0; i < data.length; i++) {
+        //     data[i] = 0
+        // }
+        editable_image_data = data
         viewer.drawViewer(true, false);
     }
 
@@ -516,7 +528,7 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice)=> {
         return
     }
 
-    segmentation_data[offset] = adding_voxels ? 1 : 0
+    editable_image_data[offset] = adding_voxels ? 1 : 0
     segmentation_is_modified = true
 
     // for(let dx=-1 ; dx<=1 ; dx++) {
@@ -548,7 +560,7 @@ let draw_voxel = (x, y, z, slice) => {
             }
             let [xf, yf, zf] = slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
             let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(xf, yf, zf)
-            segmentation_data[offset] = adding_voxels ? 1 : 0
+            editable_image_data[offset] = adding_voxels ? 1 : 0
         }
     }
     segmentation_is_modified = true
@@ -650,7 +662,7 @@ let on_mouse_down = (event) => {
     let [x, y, z] = get_cursor_position(event)
     
     let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
-    adding_voxels = segmentation_data[offset] == 0
+    adding_voxels = editable_image_data[offset] == 0
 
     if(filling) {
         
@@ -819,14 +831,14 @@ let load_lesion = (i) => {
         return
     }
 
-    if(image_descriptions.length < 8) {
-        let image_description = window.structuredClone(image_descriptions[image_descriptions.length-1])
-        image_description.name = 'new_segmentation'
-        // image_descriptions.push(image_description)
-        image_descriptions = image_descriptions.concat([image_description])
-    } else {
-        alert('There are 8 or more images to load, cannot display new_segmentation image on top because of Papaya.js limitation.')
-    }
+    // if(image_descriptions.length < 8) {
+    //     let image_description = window.structuredClone(image_descriptions[image_descriptions.length-1])
+    //     image_description.name = 'new_segmentation'
+    //     // image_descriptions.push(image_description)
+    //     image_descriptions = image_descriptions.concat([image_description])
+    // } else {
+    //     alert('There are 8 or more images to load, cannot display new_segmentation image on top because of Papaya.js limitation.')
+    // }
 
 
     description.innerText = 'loading ' + lesion['name'] + '...'
@@ -852,6 +864,7 @@ let load_lesion = (i) => {
             display: image_description.display, 
             threshold_slider: image_description.threshold_slider,
             exclusive_button: image_description.exclusive_button,
+            editable: image_description.editable,
             image_type: image_description.image_type
             // fill_button: image_description.fill_button
         })
