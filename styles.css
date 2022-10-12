@@ -20,6 +20,14 @@ button, input[type='file'] {
     display: none !important;
 }
 
+.iframe-hide {
+    z-index: -1;
+    position:absolute;
+    top:0; left:0;
+    height:1px; width:1px;
+    opacity:0;
+}
+
 button, textarea, label, input, #description {
     margin: 5px;
 }
