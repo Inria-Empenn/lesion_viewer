@@ -171,7 +171,7 @@ let check_rle = (data) => {
 let save_new_segmentation = () => {
     let volumes = papayaContainers[1].viewer.screenVolumes
     let editable_image_index = get_editable_image_index()
-    if(editable_image_index == null) {
+    if(editable_image_index < 0) {
         return
     }
     let volume = volumes[editable_image_index].volume
@@ -470,7 +470,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         }
         let viewer = papayaContainers[1].viewer
         let editable_image_index = get_editable_image_index()
-        if(editable_image_index == null) {
+        if(editable_image_index < 0) {
             return
         }
         let new_segmentation_screen_volume = viewer.screenVolumes[editable_image_index]
@@ -517,7 +517,7 @@ let filling = false
 let brush_size = 1
 let adding_voxels = true
 
-let flood_fill = (todo, offsets, threshold, volumeIndex, slice)=> {
+let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value)=> {
     let [x, y, z] = todo.shift()
     let volume = papayaContainers[1].viewer.screenVolumes[volumeIndex].volume
     let orientation = volume.transform.voxelValue.orientation
@@ -527,8 +527,8 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice)=> {
     if(volume_data[offset] < threshold) {
         return
     }
-
-    editable_image_data[offset] = adding_voxels ? 1 : 0
+    
+    editable_image_data[offset] = adding_voxels ? brush_value : 0
     segmentation_is_modified = true
 
     // for(let dx=-1 ; dx<=1 ; dx++) {
@@ -550,8 +550,7 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice)=> {
     }
 }
 
-let draw_voxel = (x, y, z, slice) => {
-
+let draw_voxel = (x, y, z, slice, brush_value) => {
     bs = brush_size-1
     for(let dx=-bs ; dx<=bs ; dx++) {
         for(let dy=-bs ; dy<=bs ; dy++) {
@@ -560,7 +559,7 @@ let draw_voxel = (x, y, z, slice) => {
             }
             let [xf, yf, zf] = slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
             let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(xf, yf, zf)
-            editable_image_data[offset] = adding_voxels ? 1 : 0
+            editable_image_data[offset] = adding_voxels ? brush_value : 0
         }
     }
     segmentation_is_modified = true
@@ -635,8 +634,9 @@ let on_mouse_move = (event) => {
     }
 
     let [x, y, z] = get_cursor_position(event)
-        
-    draw_voxel(x, y, z, selectedSlice.sliceDirection)
+
+    let brush_value = parseInt(document.getElementById('brush_value').value)
+    draw_voxel(x, y, z, selectedSlice.sliceDirection, brush_value)
 
     papayaContainers[1].viewer.drawViewer(true, false);
 }
@@ -661,12 +661,16 @@ let on_mouse_down = (event) => {
     dragging = true
     let [x, y, z] = get_cursor_position(event)
     
-    let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
-    adding_voxels = editable_image_data[offset] == 0
+    let brush_value = parseInt(document.getElementById('brush_value').value)
+    adding_voxels = event.button == 0
+
+    let editable_image_index = get_editable_image_index()
+    if(editable_image_index < 0) {
+        return
+    }
 
     if(filling) {
-        
-        for(let i=adding_voxels?0:viewer.screenVolumes.length-1 ; i<viewer.screenVolumes.length ; i++) {
+        for(let i=adding_voxels?0:editable_image_index ; adding_voxels?i<viewer.screenVolumes.length:i==editable_image_index ; i++) {
             let todo = [[x, y, z]]
             let volume = viewer.screenVolumes[i].volume
             let checkbox = document.querySelector('#toggle-visibility-buttons input[type="checkbox"][data-index="'+i+'"]')
@@ -679,7 +683,7 @@ let on_mouse_down = (event) => {
                 if(volume.imageData.data[offset] >= threshold) {
                     offsets.add(offset)
                     while(todo.length > 0) {
-                        flood_fill(todo, offsets, threshold, i, selectedSlice.sliceDirection)
+                        flood_fill(todo, offsets, threshold, i, selectedSlice.sliceDirection, brush_value)
                     }
                 }
             }
@@ -688,7 +692,7 @@ let on_mouse_down = (event) => {
         viewer.drawViewer(true, false);
 
     } else {
-        draw_voxel(x, y, z, selectedSlice.sliceDirection)
+        draw_voxel(x, y, z, selectedSlice.sliceDirection, brush_value)
     }
 
     viewer.drawViewer(true, false);
@@ -817,6 +821,14 @@ let load_lesion = (i) => {
         }
     }
 
+    let editable_image_index = get_editable_image_index()
+    let draw_tools = document.getElementById('draw_tools')
+    if(editable_image_index >= 0) {
+        draw_tools.classList.remove('hide')
+    } else {
+        draw_tools.classList.add('hide')
+    }
+
     if(need_to_load && segmentation_is_modified) {
         save_new_segmentation()
         load_lesion(current_lesion_index)
@@ -847,6 +859,7 @@ let load_lesion = (i) => {
     visibility_checkboxes.replaceChildren();
 
     show_loader()
+
     let image_names = []
     let ni = 0
     for (let image_description of image_descriptions) {
