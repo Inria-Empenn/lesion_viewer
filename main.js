@@ -276,6 +276,7 @@ let set_auto_cursor = ()=> {
     $('#papayaViewer1 > canvas').css({'cursor': 'crosshair'})
 }
 
+
 let create_slider = (name, image_index, visible, parameters) => {
     let container = document.getElementById('toggle-visibility-buttons')
 
@@ -297,13 +298,16 @@ let create_slider = (name, image_index, visible, parameters) => {
         input.setAttribute('min', parameters != null && parameters.min != null ? parameters.min : 0)
         input.setAttribute('max', parameters != null && parameters.max != null ? parameters.max : 1)
         input.setAttribute('step', parameters != null && parameters.step != null ? parameters.step : 0.001)
+        if(parameters != null && parameters.value != null) {
+            input.setAttribute('value', parameters.value)
+        }
         input.setAttribute('class', 'slider')
         input.setAttribute('data-index', image_index)
         input.setAttribute('name', name)
         input.disabled = true
         div.appendChild(input)
 
-        input.addEventListener('change', (event) => {
+        input.onchange = (event)=> {
             let value = parseFloat(event.target.value)
             let min = input.value > 0.01 ? value : 0
             let max = input.value > 0.01 ? value : 1
@@ -328,7 +332,7 @@ let create_slider = (name, image_index, visible, parameters) => {
             checkbox.dispatchEvent(new Event('change'))
 
             update_best_segmentation()
-        })
+        }
     }
     // let input = document.createElement('input');
     // input.setAttribute('type', 'range')
@@ -460,6 +464,12 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         for (let image_parameter of image_parameters) {
             if (image_parameter.display != null && !image_parameter.display) {
                 papaya.Container.hideImage(1, image_parameter.image_index)
+            }
+            if(image_parameter.parameters != null && image_parameter.parameters.value != null) {
+                let file_name = image_parameter.file_name
+                let display_name = image_parameter.name || file_name.split('/').at(-1)
+                let input = document.getElementById('threshold_' + display_name + '_range')
+                input.onchange({target: {value: image_parameter.parameters.value}})
             }
         }
 
