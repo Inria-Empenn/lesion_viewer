@@ -22,6 +22,7 @@ let task = {};
 let lesions = [];
 let grid = null;
 let editable_image_data = null;
+// let world_space = true;
 
 let show_loader = () => {
     let loader = document.getElementById('loader')
@@ -453,7 +454,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         image_index++
     }
     current_image_index = loaded_images.length-1
-    // params['worldSpace'] = true
+    // params['worldSpace'] = world_space
     params['coordinate'] = lesion['location_voxel']
     params['smoothDisplay'] = false
     // params['ignoreNiftiTransforms'] = true
@@ -529,11 +530,11 @@ let filling = false
 let brush_size = 1
 let adding_voxels = true
 
-let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value)=> {
+let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value, fill3D)=> {
     let [x, y, z] = todo.shift()
     let volume = papayaContainers[1].viewer.screenVolumes[volumeIndex].volume
-    let orientation = volume.transform.voxelValue.orientation
-    let offset = orientation.convertIndexToOffset(x, y, z)
+    // let orientation = volume.transform.voxelValue.orientation
+    let offset = convert_coord_to_offset(x, y, z, volume)
     
     let volume_data = volume.imageData.data
     if(volume_data[offset] < threshold) {
@@ -551,10 +552,17 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value)=> {
     //         }
     //     }
     // }
-    for(let deltas of [[0, -1], [1, 0], [0,1], [-1, 0]]) {
-        let [dx, dy] = deltas
-        let [xf, yf, zf] = slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
-        let offset = orientation.convertIndexToOffset(xf, yf, zf)
+    let viewer = papayaContainers[1].viewer
+    let indices = fill3D ? [[-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] : [[0, -1, 0], [1, 0, 0], [0, 1, 0], [-1, 0, 0]]
+    if(viewer.worldSpace) {
+        for(let coord of indices.slice()) {
+            indices.push(coord.map((x)=>x/2))
+        }
+    }
+    for(let deltas of indices) {
+        let [dx, dy, dz] = deltas
+        let [xf, yf, zf] = draw3D? [x+dx, y+dy, z+dz] : slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
+        let offset = convert_coord_to_offset(xf, yf, zf, volume)
         if(!offsets.has(offset)) {
             offsets.add(offset)
             todo.push([xf, yf, zf])
@@ -562,16 +570,21 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value)=> {
     }
 }
 
-let draw_voxel = (x, y, z, slice, brush_value) => {
+let draw_voxel = (x, y, z, volume, slice, brush_value) => {
+    let viewer = papayaContainers[1].viewer
+    let draw3Dcheckbox = document.getElementById('draw3D')
+    let draw3D = draw3Dcheckbox != null && draw3Dcheckbox.checked
     bs = brush_size-1
-    for(let dx=-bs ; dx<=bs ; dx++) {
-        for(let dy=-bs ; dy<=bs ; dy++) {
-            if(Math.sqrt(dx*dx+dy*dy)>=brush_size) {
-                continue
+    for(let dx=-bs ; dx<=bs ; dx+=viewer.worldSpace ? 0.5 : 1) {
+        for(let dy=-bs ; dy<=bs ; dy+=viewer.worldSpace ? 0.5 : 1) {
+            for(let dz=draw3D?-bs:0 ; dz<=(draw3D?bs:0) ; dz+=viewer.worldSpace ? 0.5 : 1) {
+                if(Math.sqrt(dx*dx+dy*dy+dz*dz)>=brush_size) {
+                    continue
+                }
+                let [xf, yf, zf] = draw3D? [x+dx, y+dy, z+dz] : slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
+                let offset = convert_coord_to_offset(xf, yf, zf, volume)
+                editable_image_data[offset] = adding_voxels ? brush_value : 0
             }
-            let [xf, yf, zf] = slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
-            let offset = papayaContainers[1].viewer.volume.transform.voxelValue.orientation.convertIndexToOffset(xf, yf, zf)
-            editable_image_data[offset] = adding_voxels ? brush_value : 0
         }
     }
     segmentation_is_modified = true
@@ -628,7 +641,45 @@ let get_cursor_position = (event)=> {
         zImageLoc = viewer.convertScreenToImageCoordinateY(yLoc, viewer.sagittalSlice);
         xImageLoc = viewer.sagittalSlice.currentSlice;
     }
+
+    if(viewer.worldSpace) {
+        let coord = viewer.getWorldCoordinateAtIndex(xImageLoc, yImageLoc, zImageLoc, new papaya.core.Coordinate(0, 0, 0));
+        xImageLoc = coord.x
+        yImageLoc = coord.y
+        zImageLoc = coord.z
+    }
+
     return [xImageLoc, yImageLoc, zImageLoc]
+}
+
+let convert_coord_to_offset = (x, y, z, volume)=> {
+    let viewer = papayaContainers[1].viewer
+
+    viewerOrigin = viewer.screenVolumes[0].volume.header.origin;  // base image origin
+    viewerVoxelDims = viewer.screenVolumes[0].volume.header.voxelDimensions;
+    
+    if(viewer.worldSpace) {
+        // x = (x - viewerOrigin.x) * viewerVoxelDims.xSize
+        // y = (viewerOrigin.y - y) * viewerVoxelDims.ySize
+        // z = (viewerOrigin.z - z) * viewerVoxelDims.zSize
+        var xTrans, yTrans, zTrans;
+        
+        let worldMat = volume.transform.worldMat
+
+        xTrans = Math.round((x * worldMat[0][0]) + (y * worldMat[0][1]) + (z * worldMat[0][2]) +
+            (worldMat[0][3]));
+        yTrans = Math.round((x * worldMat[1][0]) + (y * worldMat[1][1]) + (z * worldMat[1][2]) +
+            (worldMat[1][3]));
+        zTrans = Math.round((x * worldMat[2][0]) + (y * worldMat[2][1]) + (z * worldMat[2][2]) +
+            (worldMat[2][3]));
+
+        return volume.transform.voxelValue.orientation.convertIndexToOffsetNative(xTrans, yTrans, zTrans)
+    } else {
+        return volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
+    }
+
+    // let coord = viewer.worldSpace ? viewer.getIndexCoordinateAtWorld(x, y, z, new papaya.core.Coordinate(0, 0, 0)) : {x:x, y:y, z:z}
+    // return volume.transform.voxelValue.orientation.convertIndexToOffset(coord.x, coord.y, coord.z)
 }
 
 let on_mouse_move = (event) => {
@@ -648,7 +699,9 @@ let on_mouse_move = (event) => {
     let [x, y, z] = get_cursor_position(event)
 
     let brush_value = parseInt(document.getElementById('brush_value').value)
-    draw_voxel(x, y, z, selectedSlice.sliceDirection, brush_value)
+    let editable_image_index = get_editable_image_index()
+    let volume = editable_image_index>0 ? viewer.screenVolumes[editable_image_index].volume : viewer.volume
+    draw_voxel(x, y, z, volume, selectedSlice.sliceDirection, brush_value)
 
     papayaContainers[1].viewer.drawViewer(true, false);
 }
@@ -682,6 +735,10 @@ let on_mouse_down = (event) => {
     }
 
     if(filling) {
+
+        let fill3Dcheckbox = document.getElementById('fill3D')
+        let fill3D = fill3Dcheckbox != null && fill3Dcheckbox.checked
+        
         for(let i=adding_voxels?0:editable_image_index ; adding_voxels?i<viewer.screenVolumes.length:i==editable_image_index ; i++) {
             let todo = [[x, y, z]]
             let volume = viewer.screenVolumes[i].volume
@@ -689,13 +746,15 @@ let on_mouse_down = (event) => {
             let input_number = document.querySelector('#toggle-visibility-buttons input[type="number"][data-index="'+i+'"]')
             let image_type = checkbox != null ? checkbox.getAttribute('data-image-type') : null
             let threshold = input_number != null ? parseFloat(input_number.value) : (image_type != 'image' ? 1 : -1)
+
             if(checkbox != null && checkbox.checked && threshold > 0) {
-                let offset = volume.transform.voxelValue.orientation.convertIndexToOffset(x, y, z)
+                let offset = convert_coord_to_offset(x, y, z, volume)
+
                 let offsets = new Set()
                 if(volume.imageData.data[offset] >= threshold) {
                     offsets.add(offset)
                     while(todo.length > 0) {
-                        flood_fill(todo, offsets, threshold, i, selectedSlice.sliceDirection, brush_value)
+                        flood_fill(todo, offsets, threshold, i, selectedSlice.sliceDirection, brush_value, fill3D)
                     }
                 }
             }
@@ -704,7 +763,8 @@ let on_mouse_down = (event) => {
         viewer.drawViewer(true, false);
 
     } else {
-        draw_voxel(x, y, z, selectedSlice.sliceDirection, brush_value)
+        let volume = editable_image_index>0 ? viewer.screenVolumes[editable_image_index].volume : viewer.volume
+        draw_voxel(x, y, z, volume, selectedSlice.sliceDirection, brush_value)
     }
 
     viewer.drawViewer(true, false);
