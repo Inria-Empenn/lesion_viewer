@@ -453,10 +453,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         image_index++
     }
     current_image_index = loaded_images.length-1
-    params['worldSpace'] = false
+    // params['worldSpace'] = true
     params['coordinate'] = lesion['location_voxel']
     params['smoothDisplay'] = false
-    params['ignoreNiftiTransforms'] = true
+    // params['ignoreNiftiTransforms'] = true
     params['loadingComplete'] = () => {
 
 
