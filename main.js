@@ -124,8 +124,8 @@ let create_checkbox = (name, image_index, visible, exclusive_button, image_type=
             if(image_index < papayaContainers[1].viewer.screenVolumes.length || papayaContainers[1].viewer.loadingVolume != null) {
                 papaya.Container.hideImage(1, image_index)
             }
-        }
         update_best_segmentation()
+        }
     })
 }
 
@@ -469,7 +469,9 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
                 let file_name = image_parameter.file_name
                 let display_name = image_parameter.name || file_name.split('/').at(-1)
                 let input = document.getElementById('threshold_' + display_name + '_range')
-                input.onchange({target: {value: image_parameter.parameters.value}})
+                if(input != null) {
+                    input.onchange({target: {value: image_parameter.parameters.value}})
+                }
             }
         }
 
