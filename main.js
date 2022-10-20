@@ -775,45 +775,18 @@ let on_mouse_up = (event) => {
 }
 
 let go_to_world_coordinates = (loc) => {
-    var coord = new papaya.core.Coordinate();
-    papayaContainers[0].viewer.getIndexCoordinateAtWorld(-loc[0], -loc[1], loc[2], coord);
+    let coord = papayaContainers[0].viewer.getIndexCoordinateAtWorld(loc[0], loc[1], loc[2], new papaya.core.Coordinate());
     papayaContainers[0].viewer.gotoCoordinate(coord)
-}
-
-let go_to_voxel_coordinates = (loc) => {
-    var coord = new papaya.core.Coordinate();
-    coord.x = loc[0];
-    coord.y = loc[1];
-    coord.z = loc[2];
-    papayaContainers[0].viewer.gotoCoordinate(coord)
-}
-
-let lesion_location_to_voxel_coordinates = (loc) => {
-    if(typeof(loc) == 'string') {
-        loc = JSON.parse(loc)
-    }
-    let orientation = papayaContainers[0].viewer.screenVolumes[0].volume.header.orientation.orientation
-    if(!orientation.startsWith('XYZ')) {
-        console.log('Warning, image orientation is not XYZ')
-    }
-    let xDim = papayaContainers[0].viewer.volume.getXDim() - 1
-    let yDim = papayaContainers[0].viewer.volume.getYDim() - 1
-    let zDim = papayaContainers[0].viewer.volume.getZDim() - 1
-    let xIndex = orientation.indexOf('X')
-    let yIndex = orientation.indexOf('Y')
-    let zIndex = orientation.indexOf('Z')
-    let invertX = orientation[3+xIndex] == '-'
-    let invertY = orientation[3+yIndex] == '+'
-    let invertZ = orientation[3+zIndex] == '+'
-    return [invertX ? xDim - loc[xIndex] : loc[xIndex], invertY ? yDim - loc[yIndex] : loc[yIndex], invertZ ? zDim - loc[zIndex] : loc[zIndex]]
 }
 
 let go_to_lesion = (lesion) => {
-    let loc = lesion_location_to_voxel_coordinates(lesion['location_voxel'])
-    console.log(loc)
-    go_to_voxel_coordinates(loc)
-    // loc = lesion['location']
-    // go_to_world_coordinates([loc[0], loc[1], loc[2]])
+    let loc = lesion['location_voxel']
+    if(typeof(loc) == 'string') {
+        loc = JSON.parse(loc)
+    }
+    let orientation = papayaContainers[0].viewer.screenVolumes[0].volume.header.orientation
+    let coord = orientation.convertCoordinate({x: loc[0], y: loc[1], z: loc[2]}, new papaya.core.Coordinate())
+    papayaContainers[0].viewer.gotoCoordinate(coord)
 }
 
 let capitalize_first_letter = (string) => {
