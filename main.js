@@ -3,7 +3,7 @@ papaya.Container.syncViewers = true;
 // Remove smooth display:
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'smoothDisplay', 'No', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
 papaya.utilities.UrlUtils.createCookie(papaya.viewer.Preferences.COOKIE_PREFIX + 'showOrientation', 'Yes', papaya.viewer.Preferences.COOKIE_EXPIRY_DAYS);
-papaya.viewer.Viewer.MAX_OVERLAYS = 12;
+papaya.viewer.Viewer.MAX_OVERLAYS = 20;
 papaya.utilities.PlatformUtils.smallScreen = false;
 // To draw / change the data of a volume:
 // papayaContainers[0].viewer.screenVolumes[3].volume.imageData.data[i] = 1
@@ -454,10 +454,12 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         image_index++
     }
     current_image_index = loaded_images.length-1
-    // params['worldSpace'] = world_space
+    if(task.world_space != null) {
+        params['worldSpace'] = task.world_space
+        params['ignoreNiftiTransforms'] = !task.world_space
+    }
     params['coordinate'] = lesion['location_voxel']
     params['smoothDisplay'] = false
-    // params['ignoreNiftiTransforms'] = true
     params['loadingComplete'] = () => {
 
 
