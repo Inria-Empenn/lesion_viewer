@@ -72,7 +72,7 @@ def convert(binary_path, json_path, data_path, output_path, rle):
 	image.CopyInformation(reference)
 
 
-	sitk.WriteImage(image, str(output_path), sitk.sitkUInt8)
+	sitk.WriteImage(sitk.Cast(image, sitk.sitkUInt8), str(output_path))
 	return output_path
 
 if __name__ == "__main__":
