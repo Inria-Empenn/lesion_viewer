@@ -454,9 +454,9 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         image_index++
     }
     current_image_index = loaded_images.length-1
-    if(task.world_space != null) {
-        params['worldSpace'] = task.world_space
-        params['ignoreNiftiTransforms'] = !task.world_space
+    if(task.parameters != null && task.parameters.world_space != null) {
+        params['worldSpace'] = task.parameters.world_space
+        params['ignoreNiftiTransforms'] = !task.parameters.world_space
     }
     params['coordinate'] = lesion['location_voxel']
     params['smoothDisplay'] = false
