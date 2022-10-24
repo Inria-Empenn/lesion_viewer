@@ -462,7 +462,12 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     params['smoothDisplay'] = false
     params['loadingComplete'] = () => {
 
-
+        let viewer = papayaContainers[1].viewer
+        if(task.parameters != null && task.parameters.rotate_views != null) {
+            for(let i=0 ; i<task.parameters.rotate_views ; i++) {
+                viewer.rotateViews()
+            }
+        }
         go_to_lesion(lesions[current_lesion_index])
         for (let image_parameter of image_parameters) {
             if (image_parameter.display != null && !image_parameter.display) {
@@ -483,7 +488,6 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         for(let checkbox of checkboxes) {
             checkbox.disabled = false
         }
-        let viewer = papayaContainers[1].viewer
         let editable_image_index = get_editable_image_index()
         if(editable_image_index < 0) {
             return
