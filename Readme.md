@@ -95,6 +95,8 @@ A task file has the following structure:
 			"images": [																		# The image list for this lesion
 				{
 					"name": "time01",														# The name of the image
+					"exclusive_button": true,												# The exclusive button enables to hide all images except this one
+					"image_type": "image",													# Define the type of image to handle thresholding (for the fill tool)
 					"file": "8099YL-GMMZZO-0417OF-RMMMVC_flair_time01.nii.gz",				# The path of the image in the image archive or folder
 					"parameters": {															# The [Papaya images options](https://github.com/rii-mango/Papaya/wiki/Configuration#image-options))
 						"minPercent": 0,													# Can be min or minPercent
@@ -104,15 +106,29 @@ A task file has the following structure:
 					"display": true 														# Wether to display the image by default or not
 				},
 				{
-					"name": "time02",
-					"file": "8099YL-GMMZZO-0417OF-RMMMVC_flair_time02.nii.gz",
+					"name": "pmap",
+					"threshold_slider": true,												# The threshold slider enables to threshold the image and use the fill tool (to edit segmentation masks) 
+					"file": "8099YL-GMMZZO-0417OF-RMMMVC_pmap_time01.nii.gz",
 					"parameters": {
 						"minPercent": 0,
 						"maxPercent": 1,
-						"lut": "Grayscale"
+						"lut": "Fire"
+					},
+					"display": false
+				},
+				{
+					"name": "segMask001",
+					"editable": true, 														# This is the editable segmentation 
+																							# (the paint and fill tools will affect this image)
+																							# (this is exclusive, other images cannot be editable)
+					"file": "segMask001.nii.gz",
+					"parameters": {
+						"min": 0,
+						"max": 2,
+						"lut": "Blue Overlay"
 					},
 					"display": true
-				},
+				}
 				[...]
 			]
 		},
@@ -135,7 +151,11 @@ A task file has the following structure:
 			"editable": true,
 			"lv_type": "bool",
 		}
-	]
+	],
+	"parameters":{
+		"world_space": false, 												# Whether to display images in world space or voxel space (voxel space is best)
+		"rotate_views": 2													# The slice to display by default
+	}
 }
 
 

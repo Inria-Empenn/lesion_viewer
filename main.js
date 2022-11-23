@@ -787,6 +787,9 @@ let go_to_world_coordinates = (loc) => {
 
 let go_to_lesion = (lesion) => {
     let loc = lesion['location_voxel']
+    if(loc == null) {
+        return
+    }
     if(typeof(loc) == 'string') {
         loc = JSON.parse(loc)
     }
