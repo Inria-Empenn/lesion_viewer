@@ -95,6 +95,10 @@ button, textarea, label, input, #description {
     flex-direction: column;
 }
 
+#fields div.flex-wrap {
+    align-items: center;
+}
+
 .ag-theme-alpine .ag-ltr .ag-has-focus .ag-cell-focus:not(.ag-cell-range-selected) {
     border: none;
 }
