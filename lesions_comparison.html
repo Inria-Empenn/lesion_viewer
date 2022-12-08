@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Lesion previews</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <style>
+    body {
+      text-align: center;
+    }
+
+    .lesion {
+      display: flex;
+      flex-direction: row;
+      position: relative;
+      justify-content: center;
+    }
+
+    #lesion_container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .lesion>li.segmentation {
+      position: absolute;
+    }
+
+    li.segmentation>h4 {
+      opacity: 0;
+    }
+
+    .image {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+    }
+
+    img {
+      width: 250px;
+      image-rendering: pixelated;
+    }
+
+    ul,
+    li {
+      list-style: none;
+      padding: 0;
+    }
+
+    li.hidden,
+    .lesion>li.segmentation.hidden {
+      display: none;
+    }
+
+    h4 {
+      margin: 0px;
+      padding: 10px;
+    }
+
+    .checkbox_container {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id='load_buttons'>
+
+    <div>
+      <label for="load_images_archive">Open images archive:</label> <input type=file id="load_images_archive"
+        accept="application/zip" onclick="this.value=null;">
+      or
+      <label for="load_images">Open images:</label> <input type=file multiple id="load_images" accept="application/gzip"
+        onclick="this.value=null;">
+    </div>
+
+    <div>
+      <label for="load_lesions">Open lesions:</label> <input type=file id="load_lesions" onclick="this.value=null;">
+    </div>
+
+  </div>
+
+  <div id="lesion_container">
+
+    <span id="lesion_name"></span>
+
+    <ul class="lesion">
+
+    </ul>
+
+    <div class="checkbox_container">
+      <input type="checkbox" id="valid_checkbox" name="valid">
+      <label for="valid_checkbox">Valid</label>
+    </div>
+
+    <p id="models">
+
+    </p>
+  </div>
+
+
+  <button id="save_lesions">Save lesions</button>
+</body>
+
+<script>
+
+  var image_archive, image_files = null;
+  var lesions_data = null;
+  var lesion_index = 0;
+
+  let show_nth = (n) => {
+    // let lis = document.querySelectorAll('.lesion > li:not(.ground_truth)')
+    let lis = document.querySelectorAll('.lesion > li:not(.segmentation)')
+    for (let li of lis) {
+      li.classList.add('hidden')
+    }
+    // lis = document.querySelectorAll('.lesion > li:not(.ground_truth):nth-child('+(n+1)+')')
+    lis = document.querySelectorAll('.lesion > li:nth-child(' + (n + 1) + ')')
+    for (let li of lis) {
+      li.classList.remove('hidden')
+    }
+  }
+
+  let build_lesion = (lesions_data, lesion_index) => {
+
+    if (lesions_data == null) { return }
+    let lesion = lesions_data[lesion_index]
+
+    const ul = document.querySelector('#lesion_container > ul');
+
+    document.getElementById('lesion_name').innerText = 'patient: ' + lesion.patient + ', lesion: ' + lesion.index + ' (' + lesion_index + '/' + lesions_data.length + ')'
+    ul.replaceChildren();
+
+    for (const image of lesion.images) {
+      const li = document.createElement('li');
+      li.classList.add(image.name);
+
+      const h4 = document.createElement('h4');
+      h4.textContent = `Image ${image.name}`;
+
+      const slice_ul = document.createElement('ul');
+      slice_ul.classList.add('image');
+
+      for (const slice of image.slices) {
+        const image_li = document.createElement('li');
+
+        const img = document.createElement('img');
+        let image_path = slice.replace('/data/amasson/test/mismatches_previews/', '');
+        img.src = image_path
+        if (image_archive) {
+          image_archive.file(image_path)
+            .async("arraybuffer")
+            .then((content) => {
+              var buffer = new Uint8Array(content);
+              var blob = new Blob([buffer.buffer]);
+              img.src = URL.createObjectURL(blob);
+            },
+              function (e) {
+                console.log("Error reading " + file.name + " : " + e.message);
+              });
+        }
+        if(image_files) {
+          img.src = createObjectURL(image_files.find((v)=>v==img.src));
+        }
+
+        image_li.appendChild(img);
+        slice_ul.appendChild(image_li);
+      }
+
+      li.appendChild(h4);
+      li.appendChild(slice_ul);
+      ul.appendChild(li);
+    }
+
+    document.getElementById('models').innerText = JSON.stringify(lesions_data[lesion_index].models).replaceAll(',', '\n\n').replaceAll('"', '').replaceAll('{', '').replaceAll('}', '')
+
+    document.getElementById('valid_checkbox').indeterminate = lesions_data[lesion_index].valid == null
+    if (lesions_data[lesion_index].valid != null) {
+      document.getElementById('valid_checkbox').checked = lesions_data[lesion_index].valid
+    }
+
+    document.querySelector('.lesion > li.segmentation').classList.add('hidden')
+    show_nth(1)
+  }
+
+  let download_lesions = (content, fileName, contentType) => {
+    var a = document.createElement("a");
+    var file = new Blob([content], { type: contentType });
+    a.href = URL.createObjectURL(file);
+    a.download = fileName;
+    a.click();
+  }
+
+  let n = 0
+
+  let select_lesion = (lesion_index) => {
+    if (lesions_data == null) { return }
+
+    let n_lesions = lesions_data.length
+    if (lesion_index < 0) {
+      lesion_index = n_lesions - 1
+    } else if (lesion_index > n_lesions - 1) {
+      lesion_index = 0
+    }
+    build_lesion(lesions_data, lesion_index)
+
+    document.getElementById('valid_checkbox').focus()
+    return lesion_index
+  }
+
+  let on_checkbox_change = (checkbox, lesions_data) => {
+    if (lesions_data == null) { return }
+    lesions_data[lesion_index].valid = checkbox.indeterminate ? null : checkbox.checked
+    console.log('changed:', checkbox.checked)
+    localStorage.setItem('lesions', JSON.stringify(lesions_data))
+  }
+
+  let load_lesions = (lesions) => {
+    lesions_data = lesions
+    lesion_index = 0
+    build_lesion(lesions_data, 0)
+  }
+
+  window.addEventListener('DOMContentLoaded', (event) => {
+
+    fetch("lesions.json")
+      .then(response => response.json())
+      .then(json => {
+        document.getElementById('load_buttons').hidden = true
+        load_lesions(JSON.parse(localStorage.getItem('lesions')) || json)
+      });
+
+    document.getElementById('save_lesions').addEventListener('click', () => { download_lesions(localStorage.getItem('lesions'), 'lesions_validation.json', 'application/json'); })
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key == 'Enter') { return }
+
+      if ((event.key == '+' || event.key == 'ArrowRight') && n < 1) {
+        n++
+        show_nth(n)
+      }
+      if ((event.key == '-' || event.key == 'ArrowLeft') && n > 0) {
+        n--
+        show_nth(n)
+      }
+
+      if (event.key == ' ') {
+        document.querySelector('.lesion > li.segmentation').classList.toggle('hidden')
+        event.preventDefault()
+        event.stopPropagation()
+        return -1
+      }
+
+      if (event.key == '0' || event.key == '1' || event.key == 'Escape') {
+        let checkbox = document.getElementById('valid_checkbox')
+        checkbox.checked = event.key == '1'
+        checkbox.indeterminate = event.key == 'Escape'
+        on_checkbox_change(checkbox, lesions_data)
+      }
+
+      if (event.key == 'ArrowUp') {
+        lesion_index = select_lesion(lesion_index - 1)
+      }
+      if (event.key == 'ArrowDown') {
+        lesion_index = select_lesion(lesion_index + 1)
+      }
+
+    })
+
+
+    let load_image_archives = document.getElementById('load_images_archive')
+
+    load_image_archives.onchange = function () {
+      if (this.files.length == 0) {
+        return
+      }
+      var zip = new JSZip();
+      zip.loadAsync(this.files[0] /* = file blob */)
+        .then(function (local_zip) {
+          image_archive = local_zip;
+          for (let file in image_archive.files) {
+            if (file.endsWith('.json')) {
+              return image_archive.file(file).async('text')
+            }
+          }
+
+        }).then(function (result) {
+          if (result) {
+            load_lesions(JSON.parse(result))
+          } else {
+            console.log('lesions.json not found')
+          }
+        })
+    };
+
+    let load_images = document.getElementById('load_images')
+
+    load_images.onchange = function () {
+      if (this.files.length == 0) {
+        return
+      }
+      image_files = this.files
+    };
+
+
+    let load_lesions_button = document.getElementById('load_lesions')
+    load_lesions_button.onchange = function () {
+      if (this.files.length == 0) {
+        return
+      }
+      let file = this.files[0]
+      let file_reader = new FileReader();
+      file_reader.onload = (event) => load_lesions(JSON.parse(event.target.result))
+      file_reader.readAsText(file, 'UTF-8')
+    }
+
+
+  })
+
+</script>
+
+</html>
