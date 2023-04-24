@@ -277,6 +277,49 @@ let set_auto_cursor = ()=> {
     $('#papayaViewer1 > canvas').css({'cursor': 'crosshair'})
 }
 
+let create_level_slider = (name, image_index, parameters) => {
+
+    let div = document.createElement('div');
+    div.classList.add('slider')
+    
+    for(let input_type of ['min', 'max']) {
+
+        let input = document.createElement('input');
+        input.setAttribute('type', 'number')
+        input.setAttribute('id', 'threshold_' + name + '_' + input_type)
+        input.setAttribute('min', parameters != null && parameters.min != null ? parameters.min : 0)
+        input.setAttribute('max', parameters != null && parameters.max != null ? parameters.max : 1)
+        input.setAttribute('step', parameters != null && parameters.step != null ? parameters.step : 0.001)
+        if(parameters != null && parameters.value != null) {
+            input.setAttribute('value', parameters.value)
+        }
+        input.setAttribute('class', 'slider')
+        input.setAttribute('data-index', image_index)
+        input.setAttribute('name', name)
+        input.disabled = true
+        div.appendChild(input)
+
+        input.onchange = (event)=> {
+            let minFinal = parseFloat(document.getElementById('threshold_' + name + '_min').value)
+            let maxFinal = parseFloat(document.getElementById('threshold_' + name + '_max').value)
+            
+            let container = papayaContainers[1]
+            let viewer = container.viewer
+            let currentScreenVolume = viewer.screenVolumes[image_index]
+            currentScreenVolume.setScreenRange(minFinal, maxFinal);
+
+            if (container.showImageButtons) {
+                container.toolbar.updateImageMenuRange(viewer.getCurrentScreenVolIndex(), parseFloat(minFinal.toPrecision(7)),
+                    parseFloat(maxFinal.toPrecision(7)));
+            }
+
+            viewer.drawViewer(true);
+            
+        }
+    }
+    
+    container.appendChild(div);
+}
 
 let create_slider = (name, image_index, visible, parameters) => {
     let container = document.getElementById('toggle-visibility-buttons')
@@ -1510,6 +1553,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         document.activeElement.blur()
     })
 
+    create_level_slider('level', 1, {})
 
     document.addEventListener('keyup', (event)=> {
         let toolbox = document.getElementById('toolbox')
