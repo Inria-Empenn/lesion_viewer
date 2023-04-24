@@ -277,48 +277,57 @@ let set_auto_cursor = ()=> {
     $('#papayaViewer1 > canvas').css({'cursor': 'crosshair'})
 }
 
-let create_level_slider = (name, image_index, parameters) => {
+let set_levels = (container, viewer, currentScreenVolume, min, max)=> {
 
-    let div = document.createElement('div');
-    div.classList.add('slider')
-    
+    currentScreenVolume.setScreenRange(min, max);
+
+    if (container.showImageButtons) {
+        container.toolbar.updateImageMenuRange(viewer.getCurrentScreenVolIndex(), parseFloat(min.toPrecision(1)),
+            parseFloat(max.toPrecision(1)));
+    }
+
+    viewer.drawViewer(true);
+}
+
+let initialize_level_sliders_values = () => {
+    let container = papayaContainers[1]
+    if(container != null) {
+        let viewer = container.viewer
+        let currentScreenVolume = viewer.screenVolumes[1]
+        document.getElementById('threshold_level_min').value = currentScreenVolume.imageMin.toPrecision(2)
+        document.getElementById('threshold_level_max').value = currentScreenVolume.imageMax.toPrecision(2)
+    }
+}
+
+let initialize_level_sliders = () => {
+
+    let reset_levels_button = document.getElementById('reset_levels')
+    reset_levels_button.addEventListener('click', (event)=> {
+        let container = papayaContainers[1]
+        let viewer = container.viewer
+        let currentScreenVolume = viewer.screenVolumes[1]
+        set_levels(container, viewer, currentScreenVolume, currentScreenVolume.imageMin, currentScreenVolume.imageMax)
+        initialize_level_sliders_values()
+    })
+
     for(let input_type of ['min', 'max']) {
 
-        let input = document.createElement('input');
-        input.setAttribute('type', 'number')
-        input.setAttribute('id', 'threshold_' + name + '_' + input_type)
-        input.setAttribute('min', parameters != null && parameters.min != null ? parameters.min : 0)
-        input.setAttribute('max', parameters != null && parameters.max != null ? parameters.max : 1)
-        input.setAttribute('step', parameters != null && parameters.step != null ? parameters.step : 0.001)
-        if(parameters != null && parameters.value != null) {
-            input.setAttribute('value', parameters.value)
-        }
-        input.setAttribute('class', 'slider')
-        input.setAttribute('data-index', image_index)
-        input.setAttribute('name', name)
-        input.disabled = true
-        div.appendChild(input)
-
+        let input = document.getElementById('threshold_level_' + input_type)
+        let container = papayaContainers[1]
+        
         input.onchange = (event)=> {
-            let minFinal = parseFloat(document.getElementById('threshold_' + name + '_min').value)
-            let maxFinal = parseFloat(document.getElementById('threshold_' + name + '_max').value)
-            
             let container = papayaContainers[1]
             let viewer = container.viewer
-            let currentScreenVolume = viewer.screenVolumes[image_index]
-            currentScreenVolume.setScreenRange(minFinal, maxFinal);
+            let currentScreenVolume = viewer.screenVolumes[1]
 
-            if (container.showImageButtons) {
-                container.toolbar.updateImageMenuRange(viewer.getCurrentScreenVolIndex(), parseFloat(minFinal.toPrecision(7)),
-                    parseFloat(maxFinal.toPrecision(7)));
-            }
-
-            viewer.drawViewer(true);
+            let min = parseFloat(document.getElementById('threshold_level_min').value)
+            let max = parseFloat(document.getElementById('threshold_level_max').value)
             
+            set_levels(container, viewer, currentScreenVolume, min, max)
         }
     }
-    
-    container.appendChild(div);
+
+    initialize_level_sliders_values()
 }
 
 let create_slider = (name, image_index, visible, parameters) => {
@@ -447,6 +456,19 @@ let get_editable_image_index = ()=> {
     return task.lesions[current_lesion_index].images.findIndex((image)=>image.editable)
 }
 
+let apply_edits = ()=> {
+    if(task.parameters.save_edits_as_json && lesions[current_lesion_index].edits != null) {
+        // add edits from lesion.edits
+        let viewer = papayaContainers[1].viewer
+        let editable_image_index = get_editable_image_index()
+        for(let edit of lesions[current_lesion_index].edits) {
+            console.log('Add edit: ', edit)
+            draw_voxel(edit.x, edit.y, edit.z, viewer.screenVolumes[editable_image_index].volume, edit.slice, edit.brush_value, true)
+        }
+        viewer.drawViewer(true, false);
+    }
+}
+
 let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     let draw_button = document.getElementById('draw')    
     if(draw_button.classList.contains('active')) {
@@ -531,6 +553,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         for(let checkbox of checkboxes) {
             checkbox.disabled = false
         }
+        initialize_level_sliders_values();
         let editable_image_index = get_editable_image_index()
         if(editable_image_index < 0) {
             return
@@ -540,12 +563,14 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         // new_segmentation_screen_volume.setScreenRange(0, 9)
         papayaContainers[1].toolbar.updateImageButtons()
         let new_segmentation_volume = new_segmentation_screen_volume.volume
-        let data = new_segmentation_volume.imageData.data
         // for (let i = 0; i < data.length; i++) {
         //     data[i] = 0
         // }
+        let data = new_segmentation_volume.imageData.data
         editable_image_data = data
         viewer.drawViewer(true, false);
+        setTimeout(()=>apply_edits(), 200)
+
     }
 
     let description = document.getElementById('description')
@@ -619,7 +644,8 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value, fil
     }
 }
 
-let draw_voxel = (x, y, z, volume, slice, brush_value) => {
+let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
+    let lesion = lesions[current_lesion_index]
     let viewer = papayaContainers[1].viewer
     let draw3Dcheckbox = document.getElementById('draw3D')
     let draw3D = draw3Dcheckbox != null && draw3Dcheckbox.checked
@@ -633,10 +659,31 @@ let draw_voxel = (x, y, z, volume, slice, brush_value) => {
                 let [xf, yf, zf] = draw3D? [x+dx, y+dy, z+dz] : slice == 1 ? [x+dx, y+dy, z] : slice == 2 ? [x+dx, y, z+dy] : [x, y+dx, z+dy]
                 let offset = convert_coord_to_offset(xf, yf, zf, volume)
                 editable_image_data[offset] = adding_voxels ? brush_value : 0
+
+
+                if(task.parameters.save_edits_as_json && !ignore_edits) {
+                    if((!adding_voxels) && (lesion.edits != null)) {
+                        let edit_to_remove = 0
+                        while(edit_to_remove >= 0) {
+                            edit_to_remove = lesion.edits.findIndex((edit)=> edit.x == xf && edit.y == yf && edit.z && zf)
+                            if(edit_to_remove >= 0) { 
+                                console.log('Remove edit: ', lesion.edits[edit_to_remove])
+                                lesion.edits.splice(edit_to_remove, 1)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
     segmentation_is_modified = true
+    if(task.parameters.save_edits_as_json && adding_voxels && !ignore_edits) {
+        if(lesion['edits'] == null) {
+            lesion['edits'] = []
+        }
+        lesion['edits'].push({x:x, y:y, z:z, slice: slice, brush_value: brush_value})
+        console.log('Add edit: ', lesion.edits[lesion.edits.length-1])
+    }
 }
 
 let get_xy_loc = (event)=> {
@@ -925,8 +972,15 @@ let load_lesion = (i) => {
     } else {
         draw_tools.classList.add('hide')
     }
+    let all_except_drawing_tool = ['draw_3D_checkboxes', 'fill', 'brush_value_container', 'brush_size', 'save_segmentation']
+    if(task.parameters.save_edits_as_json) {
+        brush_size = 5
+        for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.add('hide') }
+    } else {
+        for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.remove('hide') }
+    }
 
-    if(need_to_load && segmentation_is_modified) {
+    if(need_to_load && segmentation_is_modified && !task.parameters.save_edits_as_json) {
         save_new_segmentation()
         load_lesion(current_lesion_index)
         return
@@ -1553,7 +1607,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         document.activeElement.blur()
     })
 
-    create_level_slider('level', 1, {})
+    initialize_level_sliders()
 
     document.addEventListener('keyup', (event)=> {
         let toolbox = document.getElementById('toolbox')
