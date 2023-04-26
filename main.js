@@ -554,6 +554,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
             checkbox.disabled = false
         }
         initialize_level_sliders_values();
+
+        lesions[current_lesion_index].start_time = Date.now()
+        save_to_local_storage()
+
         let editable_image_index = get_editable_image_index()
         if(editable_image_index < 0) {
             return
@@ -649,6 +653,7 @@ let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
     let viewer = papayaContainers[1].viewer
     let draw3Dcheckbox = document.getElementById('draw3D')
     let draw3D = draw3Dcheckbox != null && draw3Dcheckbox.checked
+    let edits_changed = false
     bs = brush_size-1
     for(let dx=-bs ; dx<=bs ; dx+=viewer.worldSpace ? 0.5 : 1) {
         for(let dy=-bs ; dy<=bs ; dy+=viewer.worldSpace ? 0.5 : 1) {
@@ -660,29 +665,40 @@ let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
                 let offset = convert_coord_to_offset(xf, yf, zf, volume)
                 editable_image_data[offset] = adding_voxels ? brush_value : 0
 
-
                 if(task.parameters.save_edits_as_json && !ignore_edits) {
-                    if((!adding_voxels) && (lesion.edits != null)) {
+
+                    if(adding_voxels) {
+                        if(lesion['edits'] == null) {
+                            lesion['edits'] = []
+                        }
+                        let edit_to_add = lesion.edits.findIndex((edit)=> edit.offset == offset)
+                        if(edit_to_add < 0) {
+                            console.log('Add edit: ', lesion.edits[lesion.edits.length-1])
+                            lesion['edits'].push({x:x, y:y, z:z, slice: slice, brush_value: brush_value, offset: offset})
+                            edits_changed = true
+                        }
+                    }
+                    else if(lesion.edits != null) {
                         let edit_to_remove = 0
                         while(edit_to_remove >= 0) {
-                            edit_to_remove = lesion.edits.findIndex((edit)=> edit.x == xf && edit.y == yf && edit.z && zf)
+                            edit_to_remove = lesion.edits.findIndex((edit)=> edit.offset == offset)
                             if(edit_to_remove >= 0) { 
                                 console.log('Remove edit: ', lesion.edits[edit_to_remove])
                                 lesion.edits.splice(edit_to_remove, 1)
+                                edits_changed = true
                             }
                         }
                     }
+
                 }
+
             }
         }
     }
     segmentation_is_modified = true
-    if(task.parameters.save_edits_as_json && adding_voxels && !ignore_edits) {
-        if(lesion['edits'] == null) {
-            lesion['edits'] = []
-        }
-        lesion['edits'].push({x:x, y:y, z:z, slice: slice, brush_value: brush_value})
-        console.log('Add edit: ', lesion.edits[lesion.edits.length-1])
+    
+    if(edits_changed) {
+        save_to_local_storage()
     }
 }
 
@@ -893,6 +909,19 @@ let capitalize_first_letter = (string) => {
 }
 
 let load_lesion = (i) => {
+    let lesion = lesions[current_lesion_index]
+    if(current_lesion_index >= 0 && current_lesion_index < lesions.length) {
+        
+        if(lesion.start_time != null) {
+            if(lesion.duration == null) {
+                lesion.duration = 0
+            }
+            lesion.duration += Date.now() - lesion.start_time
+        }
+
+        save_to_local_storage()
+    }
+
     current_lesion_index = i;
     if (current_lesion_index < 0) {
         current_lesion_index = lesions.length - 1;
@@ -901,7 +930,7 @@ let load_lesion = (i) => {
         current_lesion_index = 0;
     }
 
-    let lesion = lesions[current_lesion_index]
+    lesion = lesions[current_lesion_index]
     let comment = document.getElementById('comment_value');
     let valid = document.getElementById('valid_value');
     comment.value = lesion.comment != null ? lesion.comment : ''
@@ -979,6 +1008,9 @@ let load_lesion = (i) => {
     } else {
         for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.remove('hide') }
     }
+
+    task.current_lesion_index = current_lesion_index
+    save_to_local_storage()
 
     if(need_to_load && segmentation_is_modified && !task.parameters.save_edits_as_json) {
         save_new_segmentation()
@@ -1217,6 +1249,14 @@ window.addEventListener('resize', function (event) {
 })
 
 let load_lesions = (l) => {
+    lname = document.getElementById('lname')
+    fname = document.getElementById('fname')
+    if(lname.value.length == 0 || fname.value.length == 0) {
+        alert('Veuillez entrer votre nom et prénom avant de charger une archive.')
+        return
+    }
+    task.first_name = fname.value
+    task.last_name = lname.value
     loaded_images = []
     lesions = l
     if (lesions.length > 0) {
@@ -1286,6 +1326,7 @@ let save_to_local_storage = ()=> {
     }
     let lesions_string = JSON.stringify(lesions)
     localStorage.setItem(task != null && task.name ? task.name : 'lesions', lesions_string)
+    localStorage.setItem('current_lesion_index', current_lesion_index)
 
     if(shiny_is_defined()) {
         Shiny.onInputChange("lesions", lesions_string);
@@ -1304,8 +1345,9 @@ let load_from_local_storage = ()=> {
         let stored_lesions = JSON.parse(lesions_string)
         let stored_lesion_found = stored_lesions.findIndex((sl)=> lesions.findIndex((l)=> l.name == sl.name) >= 0) >= 0
         if(stored_lesion_found) {
-            let overwrite = task != null && task.parameters != null && task.parameters.confirm_overwrite ?
-            confirm('One or more lesion information was stored in this browser.\nDo you want to overwrite it?\n (Choose "Ok" to overwrite, or "Cancel" to load the selected file without browser data)') : task != null && task.parameters != null && task.parameters.ignore_local_storage ? false : true
+            let overwrite = true
+            // let overwrite = task != null && task.parameters != null && task.parameters.confirm_overwrite ?
+            // confirm('Do you want to continue where you stopped ?\n (Choose "Ok" to continue, or "Cancel" to load the selected file and restart from the beginning)') : task != null && task.parameters != null && task.parameters.ignore_local_storage ? false : true
             if(overwrite) {
                 // just overwrite editable data
                 for(let lesion of lesions) {
@@ -1328,6 +1370,8 @@ let load_from_local_storage = ()=> {
             }
         }
     }
+    current_lesion_index = localStorage.getItem('current_lesion_index')
+    task.current_lesion_index = current_lesion_index
 }
 
 let set_data_selected_row = (field_name, value)=> {
