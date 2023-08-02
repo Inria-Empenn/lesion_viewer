@@ -1003,12 +1003,14 @@ let load_lesion = (i) => {
     } else {
         draw_tools.classList.add('hide')
     }
-    let all_except_drawing_tool = ['draw_3D_checkboxes', 'fill', 'brush_value_container', 'brush_size', 'save_segmentation']
+    // let all_except_drawing_tool = ['draw_3D_checkboxes', 'fill', 'brush_value_container', 'brush_size', 'save_segmentation']
     if(task.parameters.save_edits_as_json) {
         brush_size = 5
-        for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.remove('hide') }
+        // for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.remove('hide') }
+        draw_tools.classList.remove('hide')
     } else {
-        for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.add('hide') }
+        // for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.add('hide') }
+        draw_tools.classList.add('hide')
     }
 
     task.current_lesion_index = current_lesion_index
