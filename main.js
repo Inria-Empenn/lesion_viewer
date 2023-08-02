@@ -1006,9 +1006,9 @@ let load_lesion = (i) => {
     let all_except_drawing_tool = ['draw_3D_checkboxes', 'fill', 'brush_value_container', 'brush_size', 'save_segmentation']
     if(task.parameters.save_edits_as_json) {
         brush_size = 5
-        for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.add('hide') }
-    } else {
         for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.remove('hide') }
+    } else {
+        for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.add('hide') }
     }
 
     task.current_lesion_index = current_lesion_index
