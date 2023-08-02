@@ -909,17 +909,19 @@ let capitalize_first_letter = (string) => {
 }
 
 let load_lesion = (i) => {
-    let lesion = lesions[current_lesion_index]
-    if(current_lesion_index >= 0 && current_lesion_index < lesions.length) {
-        
-        if(lesion.start_time != null) {
-            if(lesion.duration == null) {
-                lesion.duration = 0
-            }
-            lesion.duration += Date.now() - lesion.start_time
-        }
+    if(current_lesion_index != null) {
 
-        save_to_local_storage()
+        let lesion = lesions[current_lesion_index]
+        if(current_lesion_index >= 0 && current_lesion_index < lesions.length) {
+            
+            if(lesion.start_time != null) {
+                if(lesion.duration == null) {
+                    lesion.duration = 0
+                }
+                lesion.duration += Date.now() - lesion.start_time
+            }
+            save_to_local_storage()
+        }
     }
 
     current_lesion_index = i;
@@ -1051,7 +1053,8 @@ let load_lesion = (i) => {
         }
         ni++
         
-        let file_name = image_archive != null ? Object.keys(image_archive.files).find((f) => f.split('/').at(-1) == image_description.file) : image_description.file
+        // let file_name = image_archive != null ? Object.keys(image_archive.files).find((f) => f.split('/').at(-1) == image_description.file) : image_description.file
+        let file_name = image_archive != null ? Object.keys(image_archive.files).find((f) => f == image_description.file) : image_description.file
 
         image_names.push(file_name)
         image_parameters.push({ name: image_description.name, 
