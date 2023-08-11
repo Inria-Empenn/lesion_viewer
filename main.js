@@ -170,7 +170,7 @@ let check_rle = (data) => {
 }
 
 let save_new_segmentation = () => {
-    let volumes = papayaContainers[1].viewer.screenVolumes
+    let volumes = papayaContainers[0].viewer.screenVolumes
     let editable_image_index = get_editable_image_index()
     if(editable_image_index < 0) {
         return
@@ -215,7 +215,7 @@ let save_new_segmentation_to_local_storage = ()=> {
 //     let compressed = localStorage.getItem('history'+command_index)
 //     let segmentation_string = LZString.decompressFromUTF16(compressed)
 //     editable_image_data = new TextEncoder().encode(segmentation_string)
-//     papayaContainers[1].viewer.drawViewer(true, false)
+//     papayaContainers[0].viewer.drawViewer(true, false)
 // }
 
 // let undo = ()=> {
@@ -289,46 +289,46 @@ let set_levels = (container, viewer, currentScreenVolume, min, max)=> {
     viewer.drawViewer(true);
 }
 
-let initialize_level_sliders_values = () => {
-    let container = papayaContainers[1]
-    if(container != null) {
-        let viewer = container.viewer
-        let currentScreenVolume = viewer.screenVolumes[1]
-        document.getElementById('threshold_level_min').value = currentScreenVolume.imageMin.toPrecision(2)
-        document.getElementById('threshold_level_max').value = currentScreenVolume.imageMax.toPrecision(2)
-    }
-}
+// let initialize_level_sliders_values = () => {
+//     let container = papayaContainers[0]
+//     if(container != null) {
+//         let viewer = container.viewer
+//         let currentScreenVolume = viewer.screenVolumes[1]
+//         document.getElementById('threshold_level_min').value = currentScreenVolume.imageMin.toPrecision(2)
+//         document.getElementById('threshold_level_max').value = currentScreenVolume.imageMax.toPrecision(2)
+//     }
+// }
 
-let initialize_level_sliders = () => {
+// let initialize_level_sliders = () => {
 
-    let reset_levels_button = document.getElementById('reset_levels')
-    reset_levels_button.addEventListener('click', (event)=> {
-        let container = papayaContainers[1]
-        let viewer = container.viewer
-        let currentScreenVolume = viewer.screenVolumes[1]
-        set_levels(container, viewer, currentScreenVolume, currentScreenVolume.imageMin, currentScreenVolume.imageMax)
-        initialize_level_sliders_values()
-    })
+//     let reset_levels_button = document.getElementById('reset_levels')
+//     reset_levels_button.addEventListener('click', (event)=> {
+//         let container = papayaContainers[0]
+//         let viewer = container.viewer
+//         let currentScreenVolume = viewer.screenVolumes[1]
+//         set_levels(container, viewer, currentScreenVolume, currentScreenVolume.imageMin, currentScreenVolume.imageMax)
+//         initialize_level_sliders_values()
+//     })
 
-    for(let input_type of ['min', 'max']) {
+//     for(let input_type of ['min', 'max']) {
 
-        let input = document.getElementById('threshold_level_' + input_type)
-        let container = papayaContainers[1]
+//         let input = document.getElementById('threshold_level_' + input_type)
+//         let container = papayaContainers[0]
         
-        input.onchange = (event)=> {
-            let container = papayaContainers[1]
-            let viewer = container.viewer
-            let currentScreenVolume = viewer.screenVolumes[1]
+//         input.onchange = (event)=> {
+//             let container = papayaContainers[0]
+//             let viewer = container.viewer
+//             let currentScreenVolume = viewer.screenVolumes[1]
 
-            let min = parseFloat(document.getElementById('threshold_level_min').value)
-            let max = parseFloat(document.getElementById('threshold_level_max').value)
+//             let min = parseFloat(document.getElementById('threshold_level_min').value)
+//             let max = parseFloat(document.getElementById('threshold_level_max').value)
             
-            set_levels(container, viewer, currentScreenVolume, min, max)
-        }
-    }
+//             set_levels(container, viewer, currentScreenVolume, min, max)
+//         }
+//     }
 
-    initialize_level_sliders_values()
-}
+//     initialize_level_sliders_values()
+// }
 
 let create_slider = (name, image_index, visible, parameters) => {
     let container = document.getElementById('toggle-visibility-buttons')
@@ -453,13 +453,13 @@ let loaded_images = []
 let current_image_index = 0
 
 let get_editable_image_index = ()=> {
-    return task.lesions[current_lesion_index].images.findIndex((image)=>image.editable)
+    return 1 //task.lesions[current_lesion_index].images.findIndex((image)=>image.editable)
 }
 
 let apply_edits = ()=> {
     if(task.parameters.save_edits_as_json && lesions[current_lesion_index].edits != null) {
         // add edits from lesion.edits
-        let viewer = papayaContainers[1].viewer
+        let viewer = papayaContainers[0].viewer
         let editable_image_index = get_editable_image_index()
         for(let edit of lesions[current_lesion_index].edits) {
             console.log('Add edit: ', edit)
@@ -553,28 +553,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         for(let checkbox of checkboxes) {
             checkbox.disabled = false
         }
-        initialize_level_sliders_values();
+        // initialize_level_sliders_values();
 
         lesions[current_lesion_index].start_time = Date.now()
         save_to_local_storage()
-
-        let editable_image_index = get_editable_image_index()
-        if(editable_image_index < 0) {
-            return
-        }
-        let new_segmentation_screen_volume = viewer.screenVolumes[editable_image_index]
-        // new_segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
-        // new_segmentation_screen_volume.setScreenRange(0, 9)
-        papayaContainers[1].toolbar.updateImageButtons()
-        let new_segmentation_volume = new_segmentation_screen_volume.volume
-        // for (let i = 0; i < data.length; i++) {
-        //     data[i] = 0
-        // }
-        let data = new_segmentation_volume.imageData.data
-        editable_image_data = data
-        viewer.drawViewer(true, false);
-        setTimeout(()=>apply_edits(), 200)
-
     }
 
     let description = document.getElementById('description')
@@ -582,20 +564,38 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     
     papaya.Container.resetViewer(1, params);
 
+    // Add the image twice to create the segmentation
     if(image_archive != null) {
-        params['encodedImages'] = [params['encodedImages'][0]]
+        params['encodedImages'] = [params['encodedImages'][0], params['encodedImages'][0]]
     } else if(images_url != null) {
-        params['images'] = [params['images'][0]]
+        params['images'] = [params['images'][0], params['images'][0]]
     } else {
-        params['files'] = [images[0]]
+        params['files'] = [images[0], images[0]]
     }
 
-    params['loadingComplete'] = null
+    params['loadingComplete'] = () => {
+        let viewer = papayaContainers[0].viewer
+        if(task.parameters != null && task.parameters.rotate_views != null) {
+            for(let i=0 ; i<task.parameters.rotate_views ; i++) {
+                viewer.rotateViews()
+            }
+        }
+        segmentation_screen_volume = viewer.screenVolumes[1]
+        segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
+        segmentation_screen_volume.setScreenRange(0, 9)
+        let segmentation_volume = segmentation_screen_volume.volume
+        editable_image_data = segmentation_volume.imageData.data
+        for (let i = 0; i < editable_image_data.length; i++) {
+            editable_image_data[i] = 0
+        }
+        papayaContainers[0].toolbar.updateImageButtons()
+        viewer.drawViewer(true, false);
+    }
     papaya.Container.resetViewer(0, params);
 
     hide_loader()
 
-    let canvas = papayaContainers[1].viewer.canvas
+    let canvas = papayaContainers[0].viewer.canvas
     canvas.addEventListener('mousemove', on_mouse_move, false);
     canvas.addEventListener('mousedown', on_mouse_down, false);
     canvas.addEventListener('mouseup', on_mouse_up, false);
@@ -610,7 +610,7 @@ let adding_voxels = true
 
 let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value, fill3D)=> {
     let [x, y, z] = todo.shift()
-    let volume = papayaContainers[1].viewer.screenVolumes[volumeIndex].volume
+    let volume = papayaContainers[0].viewer.screenVolumes[volumeIndex].volume
     // let orientation = volume.transform.voxelValue.orientation
     let offset = convert_coord_to_offset(x, y, z, volume)
     
@@ -630,7 +630,7 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value, fil
     //         }
     //     }
     // }
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
     let indices = fill3D ? [[-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] : [[0, -1, 0], [1, 0, 0], [0, 1, 0], [-1, 0, 0]]
     if(viewer.worldSpace) {
         for(let coord of indices.slice()) {
@@ -650,7 +650,7 @@ let flood_fill = (todo, offsets, threshold, volumeIndex, slice, brush_value, fil
 
 let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
     let lesion = lesions[current_lesion_index]
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
     let draw3Dcheckbox = document.getElementById('draw3D')
     let draw3D = draw3Dcheckbox != null && draw3Dcheckbox.checked
     let edits_changed = false
@@ -703,7 +703,7 @@ let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
 }
 
 let get_xy_loc = (event)=> {
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
     let currentMouseX = papaya.utilities.PlatformUtils.getMousePositionX(event);
     let currentMouseY = papaya.utilities.PlatformUtils.getMousePositionY(event);
     if(viewer.canvasRect == null) {
@@ -716,7 +716,7 @@ let get_xy_loc = (event)=> {
 
 let get_selected_slice = (event)=> {
     let selectedSlice = null
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
     let [xLoc, yLoc] = get_xy_loc(event)
 
     if(viewer.canvasRect == null) {
@@ -734,7 +734,7 @@ let get_selected_slice = (event)=> {
 }
 
 let get_cursor_position = (event)=> {
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
 
     let [xLoc, yLoc] = get_xy_loc(event)
 
@@ -765,7 +765,7 @@ let get_cursor_position = (event)=> {
 }
 
 let convert_coord_to_offset = (x, y, z, volume)=> {
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
 
     viewerOrigin = viewer.screenVolumes[0].volume.header.origin;  // base image origin
     viewerVoxelDims = viewer.screenVolumes[0].volume.header.voxelDimensions;
@@ -796,7 +796,7 @@ let convert_coord_to_offset = (x, y, z, volume)=> {
 
 let on_mouse_move = (event) => {
 
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
     let selectedSlice = get_selected_slice(event)
     if(selectedSlice != viewer.mainImage) {
         set_auto_cursor()
@@ -815,11 +815,11 @@ let on_mouse_move = (event) => {
     let volume = editable_image_index>0 ? viewer.screenVolumes[editable_image_index].volume : viewer.volume
     draw_voxel(x, y, z, volume, selectedSlice.sliceDirection, brush_value)
 
-    papayaContainers[1].viewer.drawViewer(true, false);
+    papayaContainers[0].viewer.drawViewer(true, false);
 }
 
 let on_mouse_down = (event) => {
-    let viewer = papayaContainers[1].viewer
+    let viewer = papayaContainers[0].viewer
     if(viewer.isAltKeyDown && !event.altKey) {
         viewer.isAltKeyDown = false
     }
@@ -839,7 +839,7 @@ let on_mouse_down = (event) => {
     let [x, y, z] = get_cursor_position(event)
     
     let brush_value = parseInt(document.getElementById('brush_value').value)
-    adding_voxels = event.button == 0
+    adding_voxels = !event.shiftKey
 
     let editable_image_index = get_editable_image_index()
     if(editable_image_index < 0) {
@@ -899,9 +899,9 @@ let go_to_lesion = (lesion) => {
     if(typeof(loc) == 'string') {
         loc = JSON.parse(loc)
     }
-    let orientation = papayaContainers[0].viewer.screenVolumes[0].volume.header.orientation
+    let orientation = papayaContainers[1].viewer.screenVolumes[0].volume.header.orientation
     let coord = orientation.convertCoordinate({x: loc[0], y: loc[1], z: loc[2]}, new papaya.core.Coordinate())
-    papayaContainers[0].viewer.gotoCoordinate(coord)
+    papayaContainers[1].viewer.gotoCoordinate(coord)
 }
 
 let capitalize_first_letter = (string) => {
@@ -1005,7 +1005,7 @@ let load_lesion = (i) => {
     }
     // let all_except_drawing_tool = ['draw_3D_checkboxes', 'fill', 'brush_value_container', 'brush_size', 'save_segmentation']
     if(task.parameters.save_edits_as_json) {
-        brush_size = 5
+        brush_size = 2
         // for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.remove('hide') }
         draw_tools.classList.remove('hide')
     } else {
@@ -1090,7 +1090,7 @@ let create_table = () => {
     let rowData = []
     let i = 0
     for (let lesion of lesions) {
-        data = { name: lesion.name, description: lesion.description, comment: lesion.comment, valid: lesion.valid }
+        data = { name: lesion.name, description: lesion.description } //, comment: lesion.comment, valid: lesion.valid }
 
         if (task.fields != null) {
             for (let field of task.fields) {
@@ -1121,8 +1121,8 @@ let create_table = () => {
             columnDefs.push(field)
         }
     }
-    columnDefs.push({ field: 'valid', sortable: true, filter: true, resizable: true, editable: true, cellRenderer: 'checkboxRenderer' })
-    columnDefs.push({ field: 'comment', sortable: true, filter: true, resizable: true, editable: true })
+    // columnDefs.push({ field: 'valid', sortable: true, filter: true, resizable: true, editable: true, cellRenderer: 'checkboxRenderer' })
+    // columnDefs.push({ field: 'comment', sortable: true, filter: true, resizable: true, editable: true })
 
     // let the grid know which columns and what data to use
     const gridOptions = {
@@ -1656,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
         document.activeElement.blur()
     })
 
-    initialize_level_sliders()
+    // initialize_level_sliders()
 
     document.addEventListener('keyup', (event)=> {
         let toolbox = document.getElementById('toolbox')
