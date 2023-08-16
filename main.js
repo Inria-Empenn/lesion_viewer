@@ -270,11 +270,11 @@ let draw_cursor = ()=> {
 }
 
 let set_brush_cursor = ()=> {
-    $('#papayaViewer1 > canvas').css({'cursor': 'url('+draw_cursor()+') '+(cursor_png_size/2)+' '+(cursor_png_size/2)+', auto'})
+    $('#papayaViewer0 > canvas').css({'cursor': 'url('+draw_cursor()+') '+(cursor_png_size/2)+' '+(cursor_png_size/2)+', auto'})
 }
 
 let set_auto_cursor = ()=> {
-    $('#papayaViewer1 > canvas').css({'cursor': 'crosshair'})
+    $('#papayaViewer0 > canvas').css({'cursor': 'crosshair'})
 }
 
 let set_levels = (container, viewer, currentScreenVolume, min, max)=> {
@@ -462,8 +462,8 @@ let apply_edits = ()=> {
         let viewer = papayaContainers[0].viewer
         let editable_image_index = get_editable_image_index()
         for(let edit of lesions[current_lesion_index].edits) {
-            console.log('Add edit: ', edit)
-            draw_voxel(edit.x, edit.y, edit.z, viewer.screenVolumes[editable_image_index].volume, edit.slice, edit.brush_value, true)
+            // console.log('Add edit: ', edit)
+            editable_image_data[edit.offset] = edit.brush_value
         }
         viewer.drawViewer(true, false);
     }
@@ -473,7 +473,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     let draw_button = document.getElementById('draw')    
     if(draw_button.classList.contains('active')) {
         draw_button.classList.remove('active')
-        draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
+        draw_button.getElementsByTagName('span')[0].textContent = 'Select lesion'
         drawing = false
         set_auto_cursor()
     }
@@ -499,7 +499,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
         let file_name = image_parameter.file_name
         let parameters = image_parameter.parameters
-        let image_name = image_archive != null ? 'lesion_viewer_' + file_name.replace('/', '_').replace('.nii.gz', '') : file_name.split('/').at(-1)
+        let image_name = image_archive != null ? 'lesion_viewer_' + file_name.replaceAll('/', '_').replaceAll('-', '_').replaceAll('.nii.gz', '') : file_name.split('/').at(-1)
         if(image_archive != null) {
             params['encodedImages'].push(image_name)
         }
@@ -523,7 +523,9 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         params['worldSpace'] = task.parameters.world_space
         params['ignoreNiftiTransforms'] = !task.parameters.world_space
     }
-    params['coordinate'] = lesion['location_voxel']
+    if(lesion['location_voxel'] != 'image_center') {
+        params['coordinate'] = lesion['location_voxel']
+    }
     params['smoothDisplay'] = false
     params['loadingComplete'] = () => {
 
@@ -548,11 +550,11 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
             }
         }
 
-        let container = document.getElementById('toggle-visibility-buttons')
-        let checkboxes = document.getElementsByTagName('input')
-        for(let checkbox of checkboxes) {
-            checkbox.disabled = false
-        }
+        // let container = document.getElementById('toggle-visibility-buttons')
+        // let checkboxes = document.getElementsByTagName('input')
+        // for(let checkbox of checkboxes) {
+        //     checkbox.disabled = false
+        // }
         // initialize_level_sliders_values();
 
         lesions[current_lesion_index].start_time = Date.now()
@@ -588,6 +590,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         for (let i = 0; i < editable_image_data.length; i++) {
             editable_image_data[i] = 0
         }
+        apply_edits()
         papayaContainers[0].toolbar.updateImageButtons()
         viewer.drawViewer(true, false);
     }
@@ -673,7 +676,7 @@ let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
                         }
                         let edit_to_add = lesion.edits.findIndex((edit)=> edit.offset == offset)
                         if(edit_to_add < 0) {
-                            console.log('Add edit: ', lesion.edits[lesion.edits.length-1])
+                            // console.log('Add edit: ', lesion.edits[lesion.edits.length-1])
                             lesion['edits'].push({x:x, y:y, z:z, slice: slice, brush_value: brush_value, offset: offset})
                             edits_changed = true
                         }
@@ -683,7 +686,7 @@ let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
                         while(edit_to_remove >= 0) {
                             edit_to_remove = lesion.edits.findIndex((edit)=> edit.offset == offset)
                             if(edit_to_remove >= 0) { 
-                                console.log('Remove edit: ', lesion.edits[edit_to_remove])
+                                // console.log('Remove edit: ', lesion.edits[edit_to_remove])
                                 lesion.edits.splice(edit_to_remove, 1)
                                 edits_changed = true
                             }
@@ -797,6 +800,19 @@ let convert_coord_to_offset = (x, y, z, volume)=> {
 let on_mouse_move = (event) => {
 
     let viewer = papayaContainers[0].viewer
+    if(viewer.isAltKeyDown != event.altKey) {
+        viewer.isAltKeyDown = event.altKey
+    }
+    if(viewer.isShiftKeyDown != event.shiftKey) {
+        viewer.isShiftKeyDown = event.shiftKey
+    }
+    if(viewer.isControlKeyDown != event.ctrlKey) {
+        viewer.isControlKeyDown = event.ctrlKey
+    }
+    if(event.altKey || event.ctrlKey) {
+        return
+    }
+    
     let selectedSlice = get_selected_slice(event)
     if(selectedSlice != viewer.mainImage) {
         set_auto_cursor()
@@ -820,8 +836,17 @@ let on_mouse_move = (event) => {
 
 let on_mouse_down = (event) => {
     let viewer = papayaContainers[0].viewer
-    if(viewer.isAltKeyDown && !event.altKey) {
-        viewer.isAltKeyDown = false
+    if(viewer.isAltKeyDown != event.altKey) {
+        viewer.isAltKeyDown = event.altKey
+    }
+    if(viewer.isShiftKeyDown != event.shiftKey) {
+        viewer.isShiftKeyDown = event.shiftKey
+    }
+    if(viewer.isControlKeyDown != event.ctrlKey) {
+        viewer.isControlKeyDown = event.ctrlKey
+    }
+    if(event.altKey || event.ctrlKey) {
+        return
     }
     if(!drawing && !filling || viewer.isAltKeyDown) {
         return
@@ -884,6 +909,17 @@ let on_mouse_down = (event) => {
 
 let on_mouse_up = (event) => {
     dragging = false
+
+    let viewer = papayaContainers[0].viewer
+    if(viewer.isAltKeyDown != event.altKey) {
+        viewer.isAltKeyDown = event.altKey
+    }
+    if(viewer.isShiftKeyDown != event.shiftKey) {
+        viewer.isShiftKeyDown = event.shiftKey
+    }
+    if(viewer.isControlKeyDown != event.ctrlKey) {
+        viewer.isControlKeyDown = event.ctrlKey
+    }
 }
 
 let go_to_world_coordinates = (loc) => {
@@ -896,11 +932,19 @@ let go_to_lesion = (lesion) => {
     if(loc == null) {
         return
     }
+    let coord = null
+    let viewer = papayaContainers[1].viewer
     if(typeof(loc) == 'string') {
-        loc = JSON.parse(loc)
+        if(loc == 'image_center') {
+            coord = new papaya.core.Coordinate(Math.floor(viewer.volume.header.imageDimensions.xDim / 2),
+                Math.floor(viewer.volume.header.imageDimensions.yDim / 2),
+                Math.floor(viewer.volume.header.imageDimensions.zDim / 2));
+        } else {
+            loc = JSON.parse(loc)
+        }
     }
-    let orientation = papayaContainers[1].viewer.screenVolumes[0].volume.header.orientation
-    let coord = orientation.convertCoordinate({x: loc[0], y: loc[1], z: loc[2]}, new papaya.core.Coordinate())
+    let orientation = viewer.screenVolumes[0].volume.header.orientation
+    coord = coord == null ? orientation.convertCoordinate({x: loc[0], y: loc[1], z: loc[2]}, new papaya.core.Coordinate()) : coord
     papayaContainers[1].viewer.gotoCoordinate(coord)
 }
 
@@ -991,6 +1035,7 @@ let load_lesion = (i) => {
 
     for (let image_description of image_descriptions) {
         if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name.split('/').at(-1) == image_description.file) < 0) {
+        // if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name == image_description.file) < 0) {
             need_to_load = true;
             break
         }
@@ -1580,13 +1625,13 @@ document.addEventListener('DOMContentLoaded', function (event) {
     draw_button.addEventListener('click', () => {
         if(draw_button.classList.contains('active')) {
             draw_button.classList.remove('active')
-            draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
+            draw_button.getElementsByTagName('span')[0].textContent = 'Select lesion'
             drawing = false
             set_auto_cursor()
         } else {
             draw_button.classList.add('active')
             fill_button.classList.remove('active')
-            draw_button.getElementsByTagName('span')[0].textContent = 'Stop drawing'
+            draw_button.getElementsByTagName('span')[0].textContent = 'Stop lesion selection'
             fill_button.getElementsByTagName('span')[0].textContent = 'Fill'
             drawing = true
             filling = false
@@ -1603,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
             fill_button.classList.add('active')
             draw_button.classList.remove('active')
             fill_button.getElementsByTagName('span')[0].textContent = 'Stop filling'
-            draw_button.getElementsByTagName('span')[0].textContent = 'Draw'
+            draw_button.getElementsByTagName('span')[0].textContent = 'Select lesion'
             drawing = false
             set_auto_cursor()
             filling = true
@@ -1658,7 +1703,15 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     // initialize_level_sliders()
 
+    document.addEventListener('keydown', (event)=> {
+        papayaContainers[1].viewer.isAltKeyDown = event.altKey
+        papayaContainers[1].viewer.isShiftKeyDown = event.shiftKey
+        papayaContainers[1].viewer.isControlKeyDown = event.ctrlKey
+    })
     document.addEventListener('keyup', (event)=> {
+        papayaContainers[1].viewer.isAltKeyDown = event.altKey
+        papayaContainers[1].viewer.isShiftKeyDown = event.shiftKey
+        papayaContainers[1].viewer.isControlKeyDown = event.ctrlKey
         let toolbox = document.getElementById('toolbox')
         let plot_div = document.getElementById('plot_div')
         if(toolbox.contains(document.activeElement) || plot_div.contains(document.activeElement)) {
