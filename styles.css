@@ -177,3 +177,17 @@ body {
     display: flex;
     flex-direction: row;
 }
+
+#edits {
+    border: solid 1px black;
+}
+
+#edits ul {
+    padding: 0;
+    max-height: 800px;
+    overflow: auto;
+}
+
+#edits ul li {
+    list-style: none;
+}
