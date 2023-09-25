@@ -473,10 +473,11 @@ let apply_edits = ()=> {
     if(task.parameters.save_edits_as_json && lesions[current_lesion_index].edits != null) {
         // add edits from lesion.edits
         let viewer = papayaContainers[0].viewer
-        let editable_image_index = get_editable_image_index()
         for(let edit of lesions[current_lesion_index].edits) {
             // console.log('Add edit: ', edit)
-            editable_image_data[edit.offset] = edit.brush_value
+            for(let offset of edit.offsets) {
+                editable_image_data[offset] = edit.brush_value
+            }
             add_edit(edit.x, edit.y, edit.z)
         }
         viewer.drawViewer(true, false);
@@ -514,7 +515,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
         let file_name = image_parameter.file_name
         let parameters = image_parameter.parameters
-        let image_name = image_archive != null ? 'lesion_viewer_' + file_name.replaceAll('/', '_').replaceAll('-', '_').replaceAll('.nii.gz', '') : file_name.split('/').at(-1)
+        let image_name = image_archive != null ? 'lv_' + file_name.replaceAll('/', '_').replaceAll('-', '_').replaceAll('.nii.gz', '') : file_name.split('/').at(-1)
         if(image_archive != null) {
             params['encodedImages'].push(image_name)
         }
@@ -585,6 +586,8 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     papaya.Container.resetViewer(1, params);
 
     // Add the image twice to create the segmentation
+    let segmentation_index = image_parameters.findIndex((ip)=> ip.image_type == 'segmentation')
+    let segmentation_data = image_archive != null ? params['encodedImages'][segmentation_index] : params['images'][segmentation_index]
     if(image_archive != null) {
         params['encodedImages'] = [params['encodedImages'][0], params['encodedImages'][0]]
     } else if(images_url != null) {
@@ -592,12 +595,11 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     } else {
         params['files'] = [images[0], images[0]]
     }
-    let segmentation_index = image_parameters.findIndex((ip)=> ip.image_type == 'segmentation')
     if(segmentation_index != -1) {
         if(image_archive != null) {
-            params['encodedImages'].splice(1, 0, params['encodedImages'][segmentation_index])
+            params['encodedImages'].splice(1, 0, segmentation_data)
         } else if(images_url != null) {
-            params['images'].splice(1, 0, params['images'][segmentation_index])
+            params['images'].splice(1, 0, segmentation_data)
         } else {
             params['files'].splice(1, 0, images[segmentation_index])
         }
@@ -631,12 +633,13 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     canvas.addEventListener('mousemove', on_mouse_move, false);
     canvas.addEventListener('mousedown', on_mouse_down, false);
     canvas.addEventListener('mouseup', on_mouse_up, false);
-    canvas.addEventListener('wheel', on_mouse_wheel, false);
-
+    canvas.addEventListener('wheel', on_mouse_wheel, true);
+    
     // Prevent papaya mouse move behavior when dragging view with mouse wheel button
     window.addEventListener('mousemove', on_window_mouse_move, true);
     window.addEventListener('mousedown', on_window_mouse_down, true);
     window.addEventListener('mouseup', on_window_mouse_up, true);
+    // document.body.addEventListener('wheel', on_mouse_wheel, true);
     
 }
 
@@ -720,7 +723,9 @@ let remove_edit = (x, y, z, remove_voxels=false)=> {
         let other_edits = []
         for(let edit of lesion.edits) {
             if(edit.x == x && edit.y == y && edit.z == z) {
-                editable_image_data[edit.offset] = 0
+                for(let offset of edit.offsets) {
+                    editable_image_data[offset] = 0
+                }
             } else {
                 other_edits.push(edit)
             }
@@ -755,21 +760,39 @@ let draw_voxel = (x, y, z, volume, slice, brush_value, ignore_edits=false) => {
                         if(lesion['edits'] == null) {
                             lesion['edits'] = []
                         }
-                        let edit_to_add = lesion.edits.findIndex((edit)=> edit.offset == offset)
-                        if(edit_to_add < 0) {
-                            // console.log('Add edit: ', lesion.edits[lesion.edits.length-1])
-                            lesion['edits'].push({x:x, y:y, z:z, slice: slice, brush_value: brush_value, offset: offset})
+                        // let edit_to_add = lesion.edits.findIndex((edit)=> edit.offset == offset)
+                        // if(edit_to_add < 0) {
+                        //     // console.log('Add edit: ', lesion.edits[lesion.edits.length-1])
+                        //     lesion['edits'].push({x:x, y:y, z:z, slice: slice, brush_value: brush_value, offset: offset})
+                        //     edits_changed = true
+                        // }
+                        let edit_to_update = lesion.edits.findIndex((edit)=> edit.x == x && edit.y == y && edit.z == z && edit.brush_value == brush_value)
+                        if(edit_to_update < 0) {
+                            lesion['edits'].push({x:x, y:y, z:z, slice: slice, brush_value: brush_value, offsets: [offset]})
                             edits_changed = true
+                        } else {
+                            if(lesion['edits'][edit_to_update].offsets.indexOf(offset)<0) {
+                                lesion['edits'][edit_to_update].offsets.push(offset)
+                                edits_changed = true
+                            }
                         }
                     }
                     else if(lesion.edits != null) {
-                        let edit_to_remove = 0
-                        while(edit_to_remove >= 0) {
-                            edit_to_remove = lesion.edits.findIndex((edit)=> edit.offset == offset)
-                            if(edit_to_remove >= 0) { 
-                                // console.log('Remove edit: ', lesion.edits[edit_to_remove])
-                                lesion.edits.splice(edit_to_remove, 1)
-                                edits_changed = true
+                        // let edit_to_remove = 0
+                        // while(edit_to_remove >= 0) {
+                        //     edit_to_remove = lesion.edits.findIndex((edit)=> edit.offset == offset)
+                        //     if(edit_to_remove >= 0) { 
+                        //         // console.log('Remove edit: ', lesion.edits[edit_to_remove])
+                        //         lesion.edits.splice(edit_to_remove, 1)
+                        //         edits_changed = true
+                        //     }
+                        // }
+                        let edit_to_update = lesion.edits.findIndex((edit)=> edit.x == x && edit.y == y && edit.z == z && edit.brush_value == brush_value)
+                        if(edit_to_update >= 0) {
+                            lesion['edits'][edit_to_update].offsets.splice(lesion['edits'][edit_to_update].offsets.findIndex(offset), 1)
+                            edits_changed = true
+                            if(lesion['edits'][edit_to_update].offsets.length == 0) {
+                                lesion['edits'].splice(edit_to_update, 1)
                             }
                         }
                     }
@@ -1088,11 +1111,14 @@ let on_mouse_up = (event) => {
 }
 
 let on_mouse_wheel = (event) => {
-    papayaContainers[0].viewer.setZoomFactor(papayaContainers[0].viewer.zoomFactor + (event.deltaY>0?-0.1:0.1) )
-    papayaContainers[1].viewer.setZoomFactor(papayaContainers[1].viewer.zoomFactor + (event.deltaY>0?-0.1:0.1) )
-    event.preventDefault()
-    event.stopPropagation()
-    return -1
+    if(event.target == papayaContainers[0].viewer.canvas || papayaContainers[1].viewer.canvas) {
+        papayaContainers[0].viewer.setZoomFactor(papayaContainers[0].viewer.zoomFactor + (event.deltaY>0?-0.1:0.1) )
+        papayaContainers[1].viewer.setZoomFactor(papayaContainers[1].viewer.zoomFactor + (event.deltaY>0?-0.1:0.1) )
+        event.preventDefault()
+        event.stopPropagation()
+        event.stopImmediatePropagation()
+        return -1
+    }
 }
 
 let go_to_world_coordinates = (loc) => {
@@ -1475,20 +1501,24 @@ window.addEventListener('resize', function (event) {
 })
 
 let load_lesions = (l) => {
-    lname = document.getElementById('lname')
-    fname = document.getElementById('fname')
-    if(lname.value.length == 0 || fname.value.length == 0) {
-        alert('Veuillez entrer votre nom et prénom avant de charger une archive.')
-        return
+    expert_form = document.getElementById('expert_form')
+    expert_form_inputs = expert_form.querySelectorAll('input')
+    for(let input of expert_form_inputs) {
+        if(input.value.length == 0) {
+            alert('Veuillez remplir tous les champs avant de charger une archive. (le champ "' + input.name + '" est vide)')
+            return
+        }
+        task[input.name] = input.value
     }
-    task.first_name = fname.value
-    task.last_name = lname.value
+    // task.first_name = fname.value
+    // task.last_name = lname.value
     loaded_images = []
     lesions = l
     if (lesions.length > 0) {
         load_from_local_storage()
         let viewer_container = document.getElementById('viewer-container')
         viewer_container.classList.remove('hide')
+        document.getElementById('load buttons').classList.add('hide')
         create_table()
         resize_viewer()
         grid.gridOptions.api.selectIndex(0)
@@ -1682,6 +1712,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
     }
 
     let papaya_container0 = document.getElementById('papaya-container0')
+    // for evaluation: always side_by_side
+    localStorage.setItem('side-by-side', true)
+    papaya_container0.classList.remove('hide')
 
     let side_by_side = localStorage.getItem('side-by-side')
     if (side_by_side == 'true') {
@@ -1697,7 +1730,10 @@ document.addEventListener('DOMContentLoaded', function (event) {
     //     let papaya_container = document.getElementById('papaya-container' + i)
     //     papaya_container.addEventListener('wheel', (event) => {
     //         event.preventDefault()
-    //     })
+    //         event.stopImmediatePropagation()
+    //         // event.stopPropagation()
+    //         return -1
+    //     }, true)
     // }
     
     let side_by_side_button = document.getElementById('side-by-side')
@@ -1880,10 +1916,41 @@ document.addEventListener('DOMContentLoaded', function (event) {
     // initialize_level_sliders()
 
     document.addEventListener('keydown', (event)=> {
-        papayaContainers[1].viewer.isAltKeyDown = event.altKey
-        papayaContainers[1].viewer.isShiftKeyDown = event.shiftKey
-        papayaContainers[1].viewer.isControlKeyDown = event.ctrlKey
-    })
+        let viewer = papayaContainers[1].viewer
+        viewer.isAltKeyDown = event.altKey
+        viewer.isShiftKeyDown = event.shiftKey
+        viewer.isControlKeyDown = event.ctrlKey
+
+        keyCode = papaya.viewer.Viewer.getKeyCode(event);
+        cancelEvent = false;
+        if (keyCode === papaya.viewer.Viewer.KEYCODE_ARROW_UP) {
+            viewer.incrementAxial(false);
+            cancelEvent = true;
+        } else if (keyCode === papaya.viewer.Viewer.KEYCODE_ARROW_DOWN) {
+            viewer.incrementAxial(true);
+            cancelEvent = true;
+        } else if (keyCode === papaya.viewer.Viewer.KEYCODE_ARROW_LEFT) {
+            viewer.incrementCoronal(false);
+            cancelEvent = true;
+        } else if (keyCode === papaya.viewer.Viewer.KEYCODE_ARROW_RIGHT) {
+            viewer.incrementCoronal(true);
+            cancelEvent = true;
+        } else if ((keyCode === papaya.viewer.Viewer.KEYCODE_PAGE_DOWN) ||
+        (keyCode === papaya.viewer.Viewer.KEYCODE_FORWARD_SLASH)) {
+            viewer.incrementSagittal(true);
+            cancelEvent = true;
+        } else if ((keyCode === papaya.viewer.Viewer.KEYCODE_PAGE_UP) ||
+        (keyCode === papaya.viewer.Viewer.KEYCODE_SINGLE_QUOTE)) {
+            viewer.incrementSagittal(false);
+            cancelEvent = true;
+        }
+        if(cancelEvent) {
+            event.stopPropagation()
+            event.stopImmediatePropagation()
+            event.preventDefault()
+            return -1
+        }
+    }, true)
     document.addEventListener('keyup', (event)=> {
         papayaContainers[1].viewer.isAltKeyDown = event.altKey
         papayaContainers[1].viewer.isShiftKeyDown = event.shiftKey
@@ -1932,7 +1999,8 @@ document.addEventListener('DOMContentLoaded', function (event) {
             viewer.drawViewer(true, false);
             
         }
-    })
+
+    }, false);
 });
 
 // Draw test

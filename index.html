@@ -265,32 +265,34 @@
 
         <div id='load buttons'>
 
-            <form action="">
+            <form id="expert_form" action="">
                 <label for="lname">Nom :</label><br>
-                <input type="text" id="lname" name="lname" value=""><br><br>
+                <input type="text" id="lname" name="Nom" value=""><br><br>
                 <label for="fname">Prénom :</label><br>
-                <input type="text" id="fname" name="fname" value=""><br>
+                <input type="text" id="fname" name="Prénom" value=""><br>
                 <label for="xp">Nombre d'années d'experience après la thèse :</label><br>
-                <input type="number" id="xp" name="xp" value=""><br>
+                <input type="number" id="xp" name="Nombre d'années d'experience après la thèse" value=""><br>
                 <label for="nbirm">Nombre d'IRM médullaires traitées par mois :</label><br>
-                <input type="number" id="nbirm" name="nbirm" value=""><br>
+                <input type="number" id="nbirm" name="Nombre d'IRM médullaires traitées par mois" value=""><br>
                 <label for="lieu">Lieu d'exercice (CHU, CH, ...) :</label><br>
-                <input type="text" id="lieu" name="lieu" value=""><br>
+                <input type="text" id="lieu" name="Lieu d'exercice (CHU, CH, ...)" value=""><br>
                 <label for="spec">Spécialité (neuro-radiologie, radiologie, ...) :</label><br>
-                <input type="text" id="spec" name="spec" value=""><br>
+                <input type="text" id="spec" name="Spécialité (neuro-radiologie, radiologie, ...)" value=""><br>
             </form> 
 
             <div>
-                <label for="load_images_archive">Open images archive:</label> <input type=file id="load_images_archive"
+                <label for="load_images_archive">Archive:</label> <input type=file id="load_images_archive"
                     accept="application/zip" onclick="this.value=null;">
-                or
-                <label for="load_images">Open images:</label> <input type=file multiple id="load_images"
+                <div class="hide">or
+                    <label for="load_images">Open images:</label> <input type=file multiple id="load_images"
                     accept="application/gzip" onclick="this.value=null;">
+                </div>
             </div>
 
-            <!-- <div><label for="load_lesions_data">Open lesions data:</label> <input type=file id="load_lesions_data" accept="text/csv"></div> -->
-            <div><label for="load_task_description">Open task description:</label> <input type=file
-                    id="load_task_description" onclick="this.value=null;"></div>
+            
+            <div class="hide">
+                <label for="load_task_description">Open task description:</label> <input type=file id="load_task_description" onclick="this.value=null;">
+            </div>
         </div>
 
         <div id="loader" class="hide">
