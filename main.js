@@ -610,7 +610,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
                 viewer.rotateViews()
             }
         }
-        segmentation_screen_volume = viewer.screenVolumes[2]
+        segmentation_screen_volume = viewer.screenVolumes[viewer.screenVolumes.length-1]
         segmentation_screen_volume.changeColorTable(viewer, 'Red Overlay')
         segmentation_screen_volume.setScreenRange(0, 9)
         let segmentation_volume = segmentation_screen_volume.volume
@@ -632,6 +632,12 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     canvas.addEventListener('mousedown', on_mouse_down, false);
     canvas.addEventListener('mouseup', on_mouse_up, false);
     canvas.addEventListener('wheel', on_mouse_wheel, false);
+
+    // Prevent papaya mouse move behavior when dragging view with mouse wheel button
+    window.addEventListener('mousemove', on_window_mouse_move, true);
+    window.addEventListener('mousedown', on_window_mouse_down, true);
+    window.addEventListener('mouseup', on_window_mouse_up, true);
+    
 }
 
 let dragging = false
@@ -876,17 +882,25 @@ let convert_coord_to_offset = (x, y, z, volume)=> {
     // let coord = viewer.worldSpace ? viewer.getIndexCoordinateAtWorld(x, y, z, new papaya.core.Coordinate(0, 0, 0)) : {x:x, y:y, z:z}
     // return volume.transform.voxelValue.orientation.convertIndexToOffset(coord.x, coord.y, coord.z)
 }
+
+let dragged_viewer = null
+
+let on_window_mouse_move = (event) => {
+    if((event.buttons == 4 || event.ctrlKey) && dragged_viewer != null) {
+        let viewer = dragged_viewer == papayaContainers[1].viewer ? papayaContainers[0].viewer : papayaContainers[1].viewer
+        viewer.axialSlice.updateZoomTransform(viewer.zoomFactor, viewer.zoomLocX, viewer.zoomLocY, dragged_viewer.panAmountX,
+            dragged_viewer.panAmountY, viewer);
+        viewer.coronalSlice.updateZoomTransform(viewer.zoomFactor, viewer.zoomLocX, viewer.zoomLocZ, dragged_viewer.panAmountX,
+            dragged_viewer.panAmountZ, viewer);
+        viewer.sagittalSlice.updateZoomTransform(viewer.zoomFactor, viewer.zoomLocY, viewer.zoomLocZ, dragged_viewer.panAmountY,
+            dragged_viewer.panAmountZ, viewer);
+        viewer.drawViewer(false, true);
+    }
+}
+
 let on_mouse_move = (event) => {
     
     let viewer = papayaContainers[0].viewer
-    if(event.buttons == 4) {
-        viewer.isDragging = true
-        viewer.isPanning = true
-        event.button = 0
-        event.buttons = 1
-        viewer.mouseMoveEvent(event)
-        return
-    }
     if(viewer.isAltKeyDown != event.altKey) {
         viewer.isAltKeyDown = event.altKey
     }
@@ -925,22 +939,44 @@ let on_mouse_move = (event) => {
     papayaContainers[0].viewer.drawViewer(true, false);
 }
 
-let on_mouse_down = (event) => {
-    let viewer = papayaContainers[0].viewer
-    if(event.buttons == 4) {
+let on_window_mouse_down = (event) => {
+    if(event.buttons == 4 || event.ctrlKey) {
+        // Find which viewer was clicked: the one which has a selectedSlice
+        let viewer = papayaContainers[0].viewer
+        for(let i=0 ; i<2 ; i++) {
+            viewer = papayaContainers[i].viewer
+            viewer.previousMousePosition.x = papaya.utilities.PlatformUtils.getMousePositionX(event)
+            viewer.previousMousePosition.y = papaya.utilities.PlatformUtils.getMousePositionY(event)
+            viewer.findClickedSlice(viewer, viewer.previousMousePosition.x, viewer.previousMousePosition.y)
+            if(viewer.selectedSlice != null) {
+                dragged_viewer = viewer
+                break
+            }
+        }
+
         viewer.isDragging = true
         viewer.isPanning = true
-
+        viewer.isZoomMode = true;
+        viewer.container.toolbar.closeAllMenus();
+        
         viewer.previousMousePosition.x = papaya.utilities.PlatformUtils.getMousePositionX(event)
         viewer.previousMousePosition.y = papaya.utilities.PlatformUtils.getMousePositionY(event)
         viewer.findClickedSlice(viewer, viewer.previousMousePosition.x, viewer.previousMousePosition.y)
+        // viewer.setStartPanLocation()
         viewer.setStartPanLocation(
             viewer.convertScreenToImageCoordinateX(viewer.previousMousePosition.x, viewer.selectedSlice),
             viewer.convertScreenToImageCoordinateY(viewer.previousMousePosition.y, viewer.selectedSlice),
             viewer.selectedSlice.sliceDirection
         );
-        return
+
+        event.preventDefault()
+        event.stopPropagation()
+        return -1
     }
+}
+
+let on_mouse_down = (event) => {
+    let viewer = papayaContainers[0].viewer
     if(viewer.isAltKeyDown != event.altKey) {
         viewer.isAltKeyDown = event.altKey
     }
@@ -1015,6 +1051,23 @@ let on_mouse_down = (event) => {
     viewer.drawViewer(true, false);
 }
 
+let on_window_mouse_up = (event) => {
+    if(dragged_viewer != null) {
+        dragged_viewer = null
+
+        for(let viewer of [papayaContainers[0].viewer, papayaContainers[1].viewer]) {
+            viewer.isDragging = false;
+            viewer.isPanning = false;
+            viewer.isZoomMode = false;
+            viewer.selectedSlice = null;
+        }
+        
+        event.preventDefault()
+        event.stopPropagation()
+        return -1
+    }
+}
+
 let on_mouse_up = (event) => {
     dragging = false
 
@@ -1035,8 +1088,11 @@ let on_mouse_up = (event) => {
 }
 
 let on_mouse_wheel = (event) => {
-    papayaContainers[0].viewer.setZoomFactor(papayaContainers[0].viewer.zoomFactor + (event.deltaY>0?0.1:-0.1) )
-    papayaContainers[1].viewer.setZoomFactor(papayaContainers[1].viewer.zoomFactor + (event.deltaY>0?0.1:-0.1) )
+    papayaContainers[0].viewer.setZoomFactor(papayaContainers[0].viewer.zoomFactor + (event.deltaY>0?-0.1:0.1) )
+    papayaContainers[1].viewer.setZoomFactor(papayaContainers[1].viewer.zoomFactor + (event.deltaY>0?-0.1:0.1) )
+    event.preventDefault()
+    event.stopPropagation()
+    return -1
 }
 
 let go_to_world_coordinates = (loc) => {
@@ -1150,6 +1206,8 @@ let load_lesion = (i) => {
 
     let need_to_load = false
 
+    empty_edits()
+    
     for (let image_description of image_descriptions) {
         if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name.split('/').at(-1) == image_description.file) < 0) {
         // if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name == image_description.file) < 0) {
@@ -1167,7 +1225,7 @@ let load_lesion = (i) => {
     }
     // let all_except_drawing_tool = ['draw_3D_checkboxes', 'fill', 'brush_value_container', 'brush_size', 'save_segmentation']
     if(task.parameters.save_edits_as_json) {
-        brush_size = 3
+        brush_size = 4
         // for(let tool of all_except_drawing_tool) { document.getElementById(tool).classList.remove('hide') }
         draw_tools.classList.remove('hide')
     } else {
@@ -1178,7 +1236,6 @@ let load_lesion = (i) => {
     task.current_lesion_index = current_lesion_index
     save_to_local_storage()
     
-    empty_edits()
 
     if(need_to_load && segmentation_is_modified && !task.parameters.save_edits_as_json) {
         save_new_segmentation()
@@ -1636,12 +1693,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
     resize_viewer()
 
 
-    for(let i=0 ; i<2 ; i++) {
-        let papaya_container = document.getElementById('papaya-container' + i)
-        papaya_container.addEventListener('wheel', (event) => {
-            event.preventDefault()
-        })
-    }
+    // for(let i=0 ; i<2 ; i++) {
+    //     let papaya_container = document.getElementById('papaya-container' + i)
+    //     papaya_container.addEventListener('wheel', (event) => {
+    //         event.preventDefault()
+    //     })
+    // }
     
     let side_by_side_button = document.getElementById('side-by-side')
     side_by_side_button.addEventListener('click', () => {
