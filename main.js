@@ -1914,6 +1914,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
         }
         if(event.key == 'c') {
             toggle_crosshairs()
+            event.preventDefault()
+            event.stopPropagation()
+            return
+        }
+        if(event.key == 's') {
+            toggle_image(loaded_images.length-1)
         }
         if(event.key == 'l') {
             
