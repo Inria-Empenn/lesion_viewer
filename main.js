@@ -923,6 +923,9 @@ let on_window_mouse_move = (event) => {
 
 let on_mouse_move = (event) => {
     
+    if(event.buttons == 4) {
+        return
+    }
     let viewer = papayaContainers[0].viewer
     if(viewer.isAltKeyDown != event.altKey) {
         viewer.isAltKeyDown = event.altKey
