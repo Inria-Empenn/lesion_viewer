@@ -1151,8 +1151,8 @@ let capitalize_first_letter = (string) => {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-let load_lesion = (i) => {
-    if(current_lesion_index != null) {
+let load_lesion = (i, skip_current_lesion_time_update=false) => {
+    if(current_lesion_index != null && !skip_current_lesion_time_update) {
 
         let lesion = lesions[current_lesion_index]
         if(current_lesion_index >= 0 && current_lesion_index < lesions.length) {
@@ -1501,14 +1501,15 @@ window.addEventListener('resize', function (event) {
 })
 
 let load_lesions = (l) => {
-    expert_form = document.getElementById('expert_form')
-    expert_form_inputs = expert_form.querySelectorAll('input')
+    let expert_form = document.getElementById('expert_form')
+    let expert_form_inputs = expert_form.querySelectorAll('input')
+    task.expert_info = {}
     for(let input of expert_form_inputs) {
         if(input.value.length == 0) {
             alert('Veuillez remplir tous les champs avant de charger une archive. (le champ "' + input.name + '" est vide)')
             return
         }
-        task[input.name] = input.value
+        task.expert_info[input.name] = input.value
     }
     // task.first_name = fname.value
     // task.last_name = lname.value
@@ -1521,7 +1522,9 @@ let load_lesions = (l) => {
         document.getElementById('load buttons').classList.add('hide')
         create_table()
         resize_viewer()
-        grid.gridOptions.api.selectIndex(0)
+        if(current_lesion_index != null) {
+            grid.gridOptions.api.selectIndex(current_lesion_index)
+        }
     } else {
         console.log('no lesions found')
     }
@@ -1583,7 +1586,8 @@ let save_to_local_storage = ()=> {
     let lesions_string = JSON.stringify(lesions)
     localStorage.setItem(task != null && task.name ? task.name : 'lesions', lesions_string)
     localStorage.setItem('current_lesion_index', current_lesion_index)
-
+    localStorage.setItem('expert_info', JSON.stringify(task.expert_info))
+    
     if(shiny_is_defined()) {
         Shiny.onInputChange("lesions", lesions_string);
     }
@@ -1619,6 +1623,9 @@ let load_from_local_storage = ()=> {
                                 lesion[field_name] = stored_lesion[field_name]
                             }
                         }
+                    }
+                    if(task.parameters.save_edits_as_json) {
+                        lesion.edits = stored_lesion.edits
                     }
                     lesion.comment = stored_lesion.comment
                     lesion.valid = stored_lesion.valid
@@ -1687,7 +1694,15 @@ window.onmessage = function(event) {
 };
 
 document.addEventListener('DOMContentLoaded', function (event) {
-    
+    task.expert_info = localStorage.getItem('expert_info')
+    if(task.expert_info != null) {
+        task.expert_info = JSON.parse(task.expert_info)
+        let expert_form = document.getElementById('expert_form')
+        for(let key in task.expert_info) {
+            expert_form.querySelector('input[name="'+key+'"]').value = task.expert_info[key]
+        }
+    }
+
     let body = document.querySelector('body')
     if(body.firstChild.nodeType == document.TEXT_NODE && body.firstChild.textContent.indexOf('{{ base_href }}') >= 0) {
         body.firstChild.remove()
@@ -1828,6 +1843,12 @@ document.addEventListener('DOMContentLoaded', function (event) {
     let save_task_button = document.getElementById('save_task');
     save_task_button.addEventListener('click', () => {
         // task.lesion = lesions
+
+        let lesion = lesions[current_lesion_index]
+        if(lesion.duration == null) {
+            lesion.duration = 0
+        }
+        lesion.duration += Date.now() - lesion.start_time
         downloadJSON(task, 'lesions.json')
     })
 
@@ -2006,6 +2027,7 @@ document.addEventListener('DOMContentLoaded', function (event) {
 // Draw test
 
 const downloadJSON = (json, fileName) => {
+
     let string = JSON.stringify(json, null, '\t')
 
     var data_string = 'data:text/json;charset=utf-8,' + encodeURIComponent(string);
