@@ -1636,7 +1636,7 @@ let load_from_local_storage = ()=> {
             }
         }
     }
-    current_lesion_index = localStorage.getItem('current_lesion_index')
+    current_lesion_index = parseInt(localStorage.getItem('current_lesion_index')) || 0
     task.current_lesion_index = current_lesion_index
 }
 
