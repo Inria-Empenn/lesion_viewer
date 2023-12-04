@@ -587,7 +587,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
 
     // Add the image twice to create the segmentation
     let segmentation_index = image_parameters.findIndex((ip)=> ip.image_type == 'segmentation')
-    let segmentation_data = image_archive != null ? params['encodedImages'][segmentation_index] : params['images'][segmentation_index]
+    let segmentation_data = image_archive != null ? params['encodedImages'][segmentation_index] : params['images'] != null ? params['images'][segmentation_index] : params['files'][segmentation_index]
     if(image_archive != null) {
         params['encodedImages'] = [params['encodedImages'][0], params['encodedImages'][0]]
     } else if(images_url != null) {
@@ -1824,7 +1824,23 @@ document.addEventListener('DOMContentLoaded', function (event) {
             return
         }
         images_url = null
-        image_files = this.files
+
+        image_files = Array.from(this.files)
+        const reader = new FileReader()
+
+        reader.addEventListener(
+            "load",
+            () => {
+                load_task(JSON.parse(reader.result))
+            },
+            false,
+        );
+
+        for(let file of image_files) {
+            if(file.name.endsWith(".json")) {
+                return reader.readAsText(file)
+            }
+        }
     };
 
     

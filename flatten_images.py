@@ -1,10 +1,12 @@
 from pathlib import Path
 import shutil
-images = Path('images')
-flat_images = Path('flat_images')
 
-for patient in sorted(list(images.iterdir())):
-	for ttype in sorted(list(patient.iterdir())):
-		for image in sorted(list(ttype.iterdir())):
-			print(image)
-			shutil.copyfile(image, flat_images / f"{patient.name}_{ttype.name}_{image.name}")
+data_path = Path('data/')
+flat_data_path = Path('flat_data/')
+flat_data_path.mkdir(exist_ok=True, parents=True)
+
+files = data_path.glob('**/*')
+for file in files:
+	if file.is_dir(): continue
+	destination = flat_data_path / str(file.relative_to(data_path)).replace('/', '__')
+	shutil.copyfile(file, destination)
