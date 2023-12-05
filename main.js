@@ -527,10 +527,13 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         // if(image_parameter.fill_button) {
         //     create_fill_button(display_name, image_index)
         // }
-        if(image_parameter.threshold_slider) {
-            create_slider(display_name, image_index, image_parameter.display, image_parameter.parameters)
+        if(image_parameter.image_type == 'segmentation') {
+            // Warning: image_index is decreased by one because we will remove the t2Sag once images are loaded 
+            if(image_parameter.threshold_slider) {
+                create_slider(display_name, image_index-1, image_parameter.display, image_parameter.parameters)
+            }
+            create_checkbox(display_name, image_index-1, image_parameter.display, image_parameter.exclusive_button, image_parameter.image_type)
         }
-        create_checkbox(display_name, image_index, image_parameter.display, image_parameter.exclusive_button, image_parameter.image_type)
         image_parameter.image_index = image_index
         image_index++
     }
@@ -578,6 +581,8 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         save_to_local_storage()
 
         papayaContainers[1].viewer.setCurrentScreenVol(Math.max(0, papayaContainers[1].viewer.screenVolumes.length-2))
+        papaya.Container.removeImage(1, 0)
+        papayaContainers[1].viewer.setCurrentScreenVol(0)
     }
 
     let description = document.getElementById('description')
