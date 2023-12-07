@@ -528,11 +528,13 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         //     create_fill_button(display_name, image_index)
         // }
         if(image_parameter.image_type == 'segmentation') {
-            // Warning: image_index is decreased by one because we will remove the t2Sag once images are loaded 
+            // Warning: when we display both the t2Sag and stirSag, image_index is decreased by one because we will remove the t2Sag once images are loaded
+            let t2AndStirPresent = image_parameters.find((ip)=>ip.name == 't2Sag') != null && image_parameters.find((ip)=>ip.name == 'stirSag') != null
+            let final_image_index = t2AndStirPresent ? image_index-1 : image_index
             if(image_parameter.threshold_slider) {
-                create_slider(display_name, image_index-1, image_parameter.display, image_parameter.parameters)
+                create_slider(display_name, final_image_index, image_parameter.display, image_parameter.parameters)
             }
-            create_checkbox(display_name, image_index-1, image_parameter.display, image_parameter.exclusive_button, image_parameter.image_type)
+            create_checkbox(display_name, final_image_index, image_parameter.display, image_parameter.exclusive_button, image_parameter.image_type)
         }
         image_parameter.image_index = image_index
         image_index++
@@ -581,8 +583,10 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         save_to_local_storage()
 
         papayaContainers[1].viewer.setCurrentScreenVol(Math.max(0, papayaContainers[1].viewer.screenVolumes.length-2))
-        papaya.Container.removeImage(1, 0)
-        papayaContainers[1].viewer.setCurrentScreenVol(0)
+        if(papayaContainers[1].viewer.screenVolumes.length > 2) {
+            papaya.Container.removeImage(1, 0)
+            papayaContainers[1].viewer.setCurrentScreenVol(0)
+        }
     }
 
     let description = document.getElementById('description')
@@ -1637,6 +1641,8 @@ let load_from_local_storage = ()=> {
                     }
                     lesion.comment = stored_lesion.comment
                     lesion.valid = stored_lesion.valid
+                    lesion.duration = stored_lesion.duration
+                    lesion.start_time = stored_lesion.start_time
                 }
             }
         }
