@@ -191,3 +191,7 @@ body {
 #edits ul li {
     list-style: none;
 }
+
+.papaya-menu-unselectable.papaya-menu-titlebar.papaya-titlebar {
+    display: none;
+}
