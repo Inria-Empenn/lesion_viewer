@@ -22,6 +22,10 @@ let task = {};
 let lesions = [];
 let grid = null;
 let editable_image_data = null;
+let loaded_viewers = [];
+let viewers_loaded = ()=> {
+    return loaded_viewers.length==2 && loaded_viewers.indexOf(0) >= 0 && loaded_viewers.indexOf(1) >= 0
+}
 // let world_space = true;
 
 let show_loader = () => {
@@ -547,7 +551,6 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     if(lesion['location_voxel'] != 'image_center') {
         params['coordinate'] = lesion['location_voxel']
     }
-    let loaded_viewer = []
     params['smoothDisplay'] = false
     params['loadingComplete'] = () => {
 
@@ -587,9 +590,9 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
             papaya.Container.removeImage(1, 0)
             papayaContainers[1].viewer.setCurrentScreenVol(0)
         }
-        loaded_viewer.push(1)
+        loaded_viewers.push(1)
         // If both viewer are loaded: hide_loader
-        if(loaded_viewer.length==2 && loaded_viewer.indexOf(0) >= 0 && loaded_viewer.indexOf(1) >= 0) {
+        if(viewers_loaded()) {
             hide_loader()
         }
     }
@@ -638,9 +641,9 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         papayaContainers[0].toolbar.updateImageButtons()
         papayaContainers[0].viewer.setCurrentScreenVol(0)
         viewer.drawViewer(true, false)
-        loaded_viewer.push(0)
+        loaded_viewers.push(0)
         // If both viewer are loaded: hide_loader
-        if(loaded_viewer.length==2 && loaded_viewer.indexOf(0) >= 0 && loaded_viewer.indexOf(1) >= 0) {
+        if(viewers_loaded()) {
             hide_loader()
         }
     }
@@ -1400,6 +1403,9 @@ let create_table = () => {
             if (!event.node.isSelected()) {
                 return
             }
+            if(!viewers_loaded()) {
+                return
+            }
             let lesion_index = lesions.findIndex((lesion) => lesion.name == event.data.name)
             load_lesion(lesion_index)
         },
@@ -1940,6 +1946,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     let prev_button = document.getElementById('prev')
     prev_button.addEventListener('click', () => {
+        if(!viewers_loaded()) {
+            return
+        }
         let selected_nodes = grid.gridOptions.api.getSelectedNodes()
         let current_row = selected_nodes.length > 0 && selected_nodes[0].displayed ? selected_nodes[0].rowIndex - 1 : 1
         if (current_row < 0) {
@@ -1950,6 +1959,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
 
     let next_button = document.getElementById('next')
     next_button.addEventListener('click', () => {
+        if(!viewers_loaded()) {
+            return
+        }
         let selected_nodes = grid.gridOptions.api.getSelectedNodes()
         let current_row = selected_nodes.length > 0 && selected_nodes[0].displayed ? grid.gridOptions.api.getSelectedNodes()[0].rowIndex + 1 : -1
         if (current_row >= grid.gridOptions.api.getDisplayedRowCount()) {
