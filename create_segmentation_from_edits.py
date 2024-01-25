@@ -27,9 +27,10 @@ def convert(task_path, image_folder_path, output_path):
 		image_data = np.zeros(image_data.shape)
 
 		for edit in lesion['edits']:
-			print('   edit', edit)
+			# print('   edit', edit)
 			for offset in edit['offsets']:
-				image_data.flat[offset] = edit['brush_value']
+				if offset >= 0 and offset < len(image_data.flat):
+					image_data.flat[offset] = edit['brush_value']
 
 		image = sitk.GetImageFromArray(image_data)
 		# image = sitk.BinaryDilate(image)
