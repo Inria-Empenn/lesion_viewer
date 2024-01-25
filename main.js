@@ -547,6 +547,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
     if(lesion['location_voxel'] != 'image_center') {
         params['coordinate'] = lesion['location_voxel']
     }
+    let loaded_viewer = []
     params['smoothDisplay'] = false
     params['loadingComplete'] = () => {
 
@@ -571,7 +572,6 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
                 }
             }
         }
-
         // let container = document.getElementById('toggle-visibility-buttons')
         // let checkboxes = document.getElementsByTagName('input')
         // for(let checkbox of checkboxes) {
@@ -586,6 +586,11 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         if(papayaContainers[1].viewer.screenVolumes.length > 2) {
             papaya.Container.removeImage(1, 0)
             papayaContainers[1].viewer.setCurrentScreenVol(0)
+        }
+        loaded_viewer.push(1)
+        // If both viewer are loaded: hide_loader
+        if(loaded_viewer.length==2 && loaded_viewer.indexOf(0) >= 0 && loaded_viewer.indexOf(1) >= 0) {
+            hide_loader()
         }
     }
 
@@ -633,10 +638,13 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         papayaContainers[0].toolbar.updateImageButtons()
         papayaContainers[0].viewer.setCurrentScreenVol(0)
         viewer.drawViewer(true, false)
+        loaded_viewer.push(0)
+        // If both viewer are loaded: hide_loader
+        if(loaded_viewer.length==2 && loaded_viewer.indexOf(0) >= 0 && loaded_viewer.indexOf(1) >= 0) {
+            hide_loader()
+        }
     }
     papaya.Container.resetViewer(0, params);
-
-    hide_loader()
 
     let canvas = papayaContainers[0].viewer.canvas
     canvas.addEventListener('mousemove', on_mouse_move, false);
@@ -1242,17 +1250,17 @@ let load_lesion = (i, skip_current_lesion_time_update=false) => {
 
     let image_parameters = []
 
-    let need_to_load = false
+    let need_to_load = true // Force loading
 
     empty_edits()
     
-    for (let image_description of image_descriptions) {
-        if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name.split('/').at(-1) == image_description.file) < 0) {
-        // if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name == image_description.file) < 0) {
-            need_to_load = true;
-            break
-        }
-    }
+    // for (let image_description of image_descriptions) {
+    //     if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name.split('/').at(-1) == image_description.file) < 0) {
+    //     // if (loaded_images.length == 0 || loaded_images.findIndex((i) => i.file_name == image_description.file) < 0) {
+    //         need_to_load = true;
+    //         break
+    //     }
+    // }
 
     let editable_image_index = get_editable_image_index()
     let draw_tools = document.getElementById('draw_tools')
