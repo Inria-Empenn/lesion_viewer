@@ -22,7 +22,7 @@ let task = {};
 let lesions = [];
 let grid = null;
 let editable_image_data = null;
-let loaded_viewers = [];
+let loaded_viewers = [0, 1];
 let viewers_loaded = ()=> {
     return loaded_viewers.length==2 && loaded_viewers.indexOf(0) >= 0 && loaded_viewers.indexOf(1) >= 0
 }
@@ -439,6 +439,22 @@ let create_slider = (name, image_index, visible, parameters) => {
 //     container.appendChild(button);
 // }
 
+
+window.onerror = function (message, file, line, col, error) {
+    if(task['errors'] == null) {
+        task['errors'] = []
+    }
+    task['errors'].push({message: message, file: file, line: line, col: col, error: error})
+    return false;
+};
+
+window.addEventListener('unhandledrejection', function (e) {
+    if(task['errors'] == null) {
+        task['errors'] = []
+    }
+    task['errors'].push({message: e.reason.message})
+})
+
 let create_toggle_button = (button_name, image_index, visible) => {
     let container = document.getElementById('toggle-visibility-buttons')
     let toggle_button = document.createElement('button');
@@ -552,6 +568,7 @@ let load_lesion_viewer = (images, image_parameters, lesion, lesion_index) => {
         params['coordinate'] = lesion['location_voxel']
     }
     params['smoothDisplay'] = false
+    loaded_viewers = []
     params['loadingComplete'] = () => {
 
         let viewer = papayaContainers[1].viewer
